@@ -1,0 +1,44 @@
+.Homepage {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: #939fbb;
+  text-shadow: 1 5px 1px rgb(0, 0, 0);
+  color: #fff3f3;
+}
+
+.upper-section {
+  flex: 1;
+  display: flex;
+  align-items: top;
+  justify-content: center;
+  margin-top: 30px;
+  margin-left: 0%;
+  box-sizing: border-box; /* Makes box width fit all sizes */
+  background-color: #8f9ca8;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  text-align: center;
+}
+
+.lower-section {
+  background-color: #0000003d; /* Background color */
+  padding: 20px; /* Inner padding */
+  border-radius: 8px; /* Rounded corners */
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); /* Shadow for depth */
+  margin-top: 20px; /* Space above the lower section */
+  max-width: 600px; /* Set a maximum width */
+  margin-left: auto; /* Center horizontally */
+  margin-right: auto; /* Center horizontally */
+}
+
+.lower-section ul {
+  list-style-type: none; /* Remove default list styling */
+  padding: 0; /* Remove padding */
+}
+
+
+.lower-section li:hover {
+  background-color: #6161611c; /* Highlight effect on hover */
+}

@@ -1,0 +1,91 @@
+.layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh; /* Full height */
+}
+
+.top-bar {
+  background-color: #007BFF; /* Top bar color */
+  color: white; /* Text color */
+  padding: 10px 20px; /* Padding */
+  display: flex;
+  align-items: center; /* Center vertically */
+  justify-content: space-between; /* Space between items */
+}
+
+.sidebar {
+  position: fixed; /* Fixed position to cover the screen */
+  top: 0;
+  left: -300px; /* Hide the sidebar off-screen initially */
+  width: 250px; /* Width of the sidebar */
+  height: 100%; /* Full height */
+  background-color: #333; /* Sidebar background color */
+  color: rgb(8, 8, 8); /* Text color */
+  transition: left 0.3s ease; /* Smooth transition */
+  padding: 20px; /* Some padding */
+  z-index: 1000; /* Ensure it covers other elements */
+}
+
+.sidebar.open {
+  left: 0; /* Show sidebar */
+}
+
+.sidebaropen-button {
+  margin: 10px;
+  width: 40px;
+  height: 40px;
+}
+
+.main-content {
+  margin-left: 0; /* Adjust main content margin based on sidebar */
+  flex: 1; /* Take remaining space */
+  padding: 20px; /* Padding for main content */
+  background-color: #ffe6ce; /* Main content background color */
+}
+
+.close-button {
+  height: 30px;
+  width: 30px;
+  margin-bottom: 20px; /* Space above the close button */
+  cursor: pointer; /* Indicate it's clickable */
+  background-color: rgb(255, 0, 0); /* Style for the close button */
+  color: white; /* Text color */
+  border: none; /* Remove default border */
+  padding: 5px; /* Add some padding */
+}
+
+.sidebar-toggle {
+  height: 60px;
+  width: 60px;
+  background: none; /* No background color */
+  border: none; /* No border */
+  color: white; /* Text color */
+  cursor: pointer; /* Pointer cursor */
+  font-size: 40px; /* Font size for the toggle button */
+}
+
+.sidebar-toggle:hover {
+  background-color: #33333357;
+}
+
+.sidebar button {
+    width: 100%; /* Full width buttons */
+    padding: 10px; /* Inner padding for buttons */
+    background: none; /* No background color */
+    border: none; /* No border */
+    color: white; /* Text color */
+    text-align: left; /* Align text to the left */
+    cursor: pointer; /* Pointer cursor */
+    transition: background-color 0.2s ease; /* Transition for background color */
+}
+
+.sidebar button:hover {
+  background-color: rgba(255, 255, 255, 0.1); /* Background color on hover */
+}
+
+.sidebar nav ul {
+  list-style-type: none; /* No bullet points */
+}
+.sidebar nav li {
+  margin-bottom: 10px; /* Space between items */
+}
