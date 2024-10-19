@@ -4,6 +4,18 @@
   height: 100vh; /* Full height */
 }
 
+/*links properties*/
+a { 
+  color: #007BFF; /* Default link color */
+  text-decoration: none; /* Remove underline*/
+  font-size: 30px;
+
+}
+a:hover {
+  color: #3b9aff; /* Default link color */
+  font-size: 31px;
+}
+
 .top-bar {
   background-color: #007BFF; /* Top bar color */
   color: white; /* Text color */

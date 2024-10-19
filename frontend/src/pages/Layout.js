@@ -1,5 +1,5 @@
-// src/components/Layout.js
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import './Layout.css';
 
 const Layout = ({ children }) => {
@@ -26,10 +26,8 @@ const Layout = ({ children }) => {
         </button>
         <nav>
           <ul>
-            <li><button>Option 1</button></li>
-            <li><button>Option 2</button></li>
-            <li><button>Option 3</button></li>
-            <li><button>Option 4</button></li>
+            <li><Link to="/">Homepage</Link></li>
+            <li><Link to="/Products">Products</Link></li>
           </ul>
         </nav>
       </aside>

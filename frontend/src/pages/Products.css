@@ -1,0 +1,7 @@
+.horizontal-scroll-bar {
+    display: flex; /* Align elements in a row */
+    overflow-x: auto; /* Enable horizontal scrolling */
+    white-space: nowrap; /* Prevent line breaks */
+    padding: 10px;
+    gap: 10px; /* Space between options */
+  }
