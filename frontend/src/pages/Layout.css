@@ -48,22 +48,28 @@ a:hover {
   height: 40px;
 }
 
+.sidebar button {
+   
+  padding: 10px; /* Inner padding for buttons */
+  background: none; /* No background color */
+  border: none; /* No border */
+  cursor: pointer; /* Pointer cursor */
+}
+
 .main-content {
   margin-left: 0; /* Adjust main content margin based on sidebar */
   flex: 1; /* Take remaining space */
   padding: 20px; /* Padding for main content */
-  background-color: #ffe6ce; /* Main content background color */
+  background-color: #eef9ff; /* Main content background color */
 }
 
 .close-button {
-  height: 30px;
-  width: 30px;
-  margin-bottom: 20px; /* Space above the close button */
-  cursor: pointer; /* Indicate it's clickable */
-  background-color: rgb(255, 0, 0); /* Style for the close button */
+  top: 10px;
+  height: 40px;
+  width: 40px;
+  margin-right: -10px; /* Space above the close button */
   color: white; /* Text color */
-  border: none; /* Remove default border */
-  padding: 5px; /* Add some padding */
+  text-align: center;
 }
 
 .sidebar-toggle {
@@ -80,16 +86,6 @@ a:hover {
   background-color: #33333357;
 }
 
-.sidebar button {
-    width: 100%; /* Full width buttons */
-    padding: 10px; /* Inner padding for buttons */
-    background: none; /* No background color */
-    border: none; /* No border */
-    color: white; /* Text color */
-    text-align: left; /* Align text to the left */
-    cursor: pointer; /* Pointer cursor */
-    transition: background-color 0.2s ease; /* Transition for background color */
-}
 
 .sidebar button:hover {
   background-color: rgba(255, 255, 255, 0.1); /* Background color on hover */

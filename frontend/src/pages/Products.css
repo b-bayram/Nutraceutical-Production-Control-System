@@ -5,3 +5,69 @@
     padding: 10px;
     gap: 10px; /* Space between options */
   }
+
+  /* Container for the list */
+.products-container {
+  max-width: 100%;
+  margin: 20px auto;
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background-color: #f9f9f9;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  list-style: none;
+  padding-left: 0; /* Removes default padding for ul */
+}
+
+.add-product-btn {
+  background-color: #4CAF50; /* Green background */
+  color: white; /* White text */
+  border: none;
+  padding: 10px 20px;
+  font-size: 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.add-product-btn:hover {
+  background-color: #45a049; /* Darker green on hover */
+}
+
+/* List items */
+.product-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 15px;
+  margin-bottom: 8px;
+  background-color: #fff;
+  border-radius: 4px;
+  transition: box-shadow 0.2s ease;
+}
+
+.product-item:hover {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Product name styling */
+.product-name {
+  font-size: 16px;
+  color: #333;
+}
+
+/* Delete button */
+.delete-btn {
+  display: none;
+  color: #d9534f;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+}
+
+/* Show delete button only on hover */
+.product-item:hover .delete-btn {
+  display: block;
+}
