@@ -15,7 +15,7 @@ function Products() {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const response = await axios.get('http://localhost:5000/api/products');
+        const response = await axios.get('http://localhost:5001/api/products');
         setProducts(response.data);
       } catch (error) {
         console.error('Error fetching products:', error);
@@ -34,7 +34,7 @@ function Products() {
   const handleAddSubmit = async (event) => {
     event.preventDefault();
     try {
-      const response = await axios.post('http://localhost:5000/api/products', {
+      const response = await axios.post('http://localhost:5001/api/products', {
         name: productName,
       });
       setProducts([...products, { id: response.data.productId, name: productName }]);
@@ -48,7 +48,7 @@ function Products() {
   // Handle delete product confirmation
   const handleDeleteProduct = async () => {
     try {
-      await axios.delete(`http://localhost:5000/api/products/${selectedProductId}`);
+      await axios.delete(`http://localhost:5001/api/products/${selectedProductId}`);
       setProducts(products.filter((product) => product.id !== selectedProductId));
       setSelectedProductId(null);
       setDeleteModalOpen(false); // Close the modal after deletion

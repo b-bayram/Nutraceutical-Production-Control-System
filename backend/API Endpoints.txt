@@ -1,0 +1,30 @@
+RawMaterials Endpoints:
+    RawMaterial Types:
+    POST   /api/raw-materials/types          - Yeni hammadde tipi oluşturma
+    GET    /api/raw-materials/types          - Tüm hammadde tiplerini listeleme
+    PUT    /api/raw-materials/types/:id      - Hammadde tipi güncelleme
+    DELETE /api/raw-materials/types/:id      - Hammadde tipi silme
+
+    Rawmaterial Batches:
+    POST   /api/raw-materials/batches        - Yeni parti ekleme
+    GET    /api/raw-materials/batches        - Tüm partileri listeleme
+    GET    /api/raw-materials/batches/:id    - Parti detayı görüntüleme
+    PUT    /api/raw-materials/batches/:id    - Parti güncelleme
+    DELETE /api/raw-materials/batches/:id    - Parti silme
+    GET    /api/raw-materials/batches/search - Parti arama ve filtreleme
+
+
+Products Endpoints:
+    Product Operations:
+    POST   /api/products                     - Yeni ürün oluşturma
+    GET    /api/products                     - Tüm ürünleri listeleme
+    GET    /api/products/:id                 - Ürün detayı görüntüleme
+    PUT    /api/products/:id                 - Ürün güncelleme
+    DELETE /api/products/:id                 - Ürün silme
+
+    Recipe Operations:
+    POST   /api/products/:id/recipe          - Ürüne reçete ekleme
+    GET    /api/products/:id/recipe          - Ürünün aktif reçetesini görüntüleme
+    PUT    /api/products/:id/recipe          - Reçete güncelleme
+    DELETE /api/products/:id/recipe          - Reçete silme
+    GET    /api/products/:id/recipe/history  - Reçete geçmişini görüntüleme
