@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import './Layout.css';
 
 const Layout = ({ children }) => {
-  const [isSidebarOpen, setSidebarOpen] = useState(false);
+  const [isSidebarOpen, setSidebarOpen] = useState(true);
 
   const toggleSidebar = () => {
     setSidebarOpen(!isSidebarOpen);
@@ -11,33 +11,27 @@ const Layout = ({ children }) => {
 
   return (
     <div className="layout">
-      {/* Top Bar */}
-      <header className="top-bar">
-        <button className="sidebar-toggle" onClick={toggleSidebar}>
-          ☰ {/* Hamburger icon */}
-        </button>
-        <h1>Nutraceutical Production Control System</h1>
-      </header>
-
-      {/* Sidebar */}
-      <aside className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
-        <button className="close-button" onClick={toggleSidebar}>
-          × {/* Close icon */}
-        </button>
-        <nav>
-          <ul>
-            <li><Link to="/">Homepage</Link></li>
-            <li><Link to="/Products">Products</Link></li>
-          </ul>
-        </nav>
-      </aside>
-
-      {/* Main Content */}
-      <main className="main-content">
-        {children} {/* This will render the current page content */}
+      <div className="top-bar">
+        <button className="menu-toggle" onClick={toggleSidebar}>☰</button>
+        <span>Welcome, Admin</span>
+      </div>
+      
+      <nav className={`sidebar ${!isSidebarOpen ? 'closed' : ''}`}>
+        <ul>
+          <li><Link to="/">Home</Link></li>
+          <li><Link to="/raw-materials">Raw Materials</Link></li>
+          <li><Link to="/products">Products</Link></li>
+          <li><Link to="/production-queue">Production Queue</Link></li>
+          <li><Link to="/suppliers">Suppliers</Link></li>
+          <li><Link to="/settings">Settings</Link></li>
+        </ul>
+      </nav>
+      
+      <main className={`main-content ${!isSidebarOpen ? 'expanded' : ''}`}>
+        {children}
       </main>
     </div>
   );
-};
+}
 
 export default Layout;

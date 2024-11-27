@@ -1,15 +1,16 @@
 import React from 'react';
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom'; // Import necessary components from react-router-dom
-import Homepage from './pages/Homepage'; 
-import Products from './pages/Products'; 
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import Homepage from './pages/Homepage';
+import Products from './pages/Products';
+import RawMaterials from './pages/RawMaterials';
 
 function App() {
   return (
     <Router>
       <Routes>
-        {/* Define the route for the homepage */}
         <Route path="/" element={<Homepage/>} />
-        <Route path="/Products" element={<Products/>} />
+        <Route path="/products" element={<Products/>} />
+        <Route path="/raw-materials" element={<RawMaterials/>} />
       </Routes>
     </Router>
   );

@@ -1,0 +1,174 @@
+.raw-materials-page {
+    padding: 24px;
+    background-color: #f8f9fa;
+    min-height: 100vh;
+  }
+  
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+  }
+  
+  .header h1 {
+    font-size: 24px;
+    font-weight: 600;
+    color: #333;
+  }
+  
+  .header-buttons {
+    display: flex;
+    gap: 12px;
+  }
+  
+  .add-btn, .add-type-btn {
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .add-btn {
+    background-color: #1a73e8;
+    color: white;
+    border: none;
+  }
+  
+  .add-type-btn {
+    background-color: white;
+    color: #1a73e8;
+    border: 1px solid #1a73e8;
+  }
+  
+  .stats-container {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  
+  .stat-card {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  }
+  
+  .stat-label {
+    color: #666;
+    margin-bottom: 8px;
+    display: block;
+  }
+  
+  .stat-value {
+    font-size: 24px;
+    font-weight: 600;
+  }
+  
+  .stat-value.total { color: #1a73e8; }
+  .stat-value.in-stock { color: #34a853; }
+  .stat-value.low-stock { color: #fbbc04; }
+  .stat-value.expired { color: #ea4335; }
+  
+  .search-bar {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  
+  .search-bar input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+  }
+  
+  .search-bar select {
+    min-width: 150px;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+  }
+  
+  .materials-table {
+    width: 100%;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    margin-bottom: 24px;
+  }
+  
+  .materials-table th,
+  .materials-table td {
+    padding: 16px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+  }
+  
+  .materials-table th {
+    color: #666;
+    font-weight: 500;
+  }
+  
+  .status-badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 14px;
+  }
+  
+  .status-badge.in-stock {
+    background-color: #e6f4ea;
+    color: #34a853;
+  }
+  
+  .status-badge.low-stock {
+    background-color: #fef7e0;
+    color: #fbbc04;
+  }
+  
+  .status-badge.expired {
+    background-color: #fce8e6;
+    color: #ea4335;
+  }
+  
+  .action-buttons {
+    display: flex;
+    gap: 8px;
+  }
+  
+  .edit-btn, .view-btn {
+    padding: 6px 12px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  
+  .edit-btn {
+    background-color: #1a73e8;
+    color: white;
+  }
+  
+  .view-btn {
+    background-color: #f1f3f4;
+    color: #333;
+  }
+  
+  .form-group {
+    margin-bottom: 16px;
+  }
+  
+  .form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+  }
+  
+  .form-group input,
+  .form-group select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+  }
