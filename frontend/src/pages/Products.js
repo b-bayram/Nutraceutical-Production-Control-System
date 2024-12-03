@@ -21,6 +21,7 @@ const AddProductModal = ({ isOpen, onClose, onAdd }) => {
       console.error('Error adding product:', error);
     }
   };
+  
 
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
