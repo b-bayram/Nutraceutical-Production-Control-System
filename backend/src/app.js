@@ -3,8 +3,10 @@ const cors = require('cors');
 require('dotenv').config();
 
 const rawMaterialsRouter = require('./routes/rawMaterials');
-const productsRouter = require('./routes/products');
+const productsRouter = require('./routes/products'); 
+const productionsRouter = require('./routes/productions');
 
+// Express app'i oluştur
 const app = express();
 
 // Middleware
@@ -14,14 +16,15 @@ app.use(express.json());
 // Routes
 app.use('/api/raw-materials', rawMaterialsRouter);
 app.use('/api/products', productsRouter);
+app.use('/api/productions', productionsRouter);
 
 // Error handling
 app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).json({ error: err.message });
+   console.error(err.stack);
+   res.status(500).json({ error: err.message });
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+   console.log(`Server is running on port ${PORT}`);
 });
