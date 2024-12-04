@@ -11,43 +11,44 @@ import {
   Truck,
   AlertCircle,
 } from 'lucide-react';
+//import logo from '../assets/LOGONCPS.svg';
 
 const Sidebar = ({ isOpen }) => {
   const location = useLocation();
   
   const menuItems = [
     {
-      title: 'Ana Sayfa',
+      title: 'Homepage',
       icon: <Home size={20} />,
       path: '/',
     },
     {
-      title: 'Ürünler',
+      title: 'Products',
       icon: <Package size={20} />,
       path: '/products',
     },
     {
-      title: 'Hammaddeler',
+      title: 'Raw Materials',
       icon: <Box size={20} />,
       path: '/raw-materials',
     },
     {
-      title: 'Üretim Sırası',
+      title: 'Production Queue',
       icon: <ClipboardList size={20} />,
       path: '/production-queue',
     },
     {
-      title: 'Tedarikçiler',
+      title: 'Suppliers',
       icon: <Truck size={20} />,
       path: '/suppliers',
     },
     {
-      title: 'Raporlar',
+      title: 'Reports',
       icon: <BarChart2 size={20} />,
       path: '/reports',
     },
     {
-      title: 'Kullanıcılar',
+      title: 'Users',
       icon: <Users size={20} />,
       path: '/users',
     }
@@ -57,9 +58,11 @@ const Sidebar = ({ isOpen }) => {
     <div className={`sidebar ${!isOpen ? 'closed' : ''}`}>
       <div className="px-3 py-4">
         {/* Logo veya Marka Alanı */}
-        <div className="mb-8 px-2">
-          <h1 className="text-xl font-bold text-white">İlaç Üretim</h1>
-          <p className="text-sm text-blue-200 mt-1">Envanter Yönetimi</p>
+        <div className="mb-12 px-3">
+        
+          <h1 className="text-5xl font-bold text-white">NPCS</h1>
+          
+          <p className="text-sm text-blue-200 mt-2">Inventory Management and Production Tracking</p>
         </div>
 
         {/* Ana Menü */}
@@ -99,7 +102,7 @@ const Sidebar = ({ isOpen }) => {
             <span className="inline-flex items-center justify-center mr-3">
               <Settings size={20} />
             </span>
-            <span className="font-medium">Ayarlar</span>
+            <span className="font-medium">Settings</span>
           </Link>
           <Link
             to="/help"
@@ -108,7 +111,7 @@ const Sidebar = ({ isOpen }) => {
             <span className="inline-flex items-center justify-center mr-3">
               <AlertCircle size={20} />
             </span>
-            <span className="font-medium">Yardım</span>
+            <span className="font-medium">Help and Support</span>
           </Link>
         </div>
 
@@ -116,10 +119,10 @@ const Sidebar = ({ isOpen }) => {
         <div className="mt-8 px-2">
           <div className="flex items-center p-2 rounded-lg bg-white bg-opacity-5">
             <div className="w-8 h-8 rounded-full bg-blue-400 flex items-center justify-center text-white font-semibold">
-              AK
+              @
             </div>
             <div className="ml-3">
-              <p className="text-sm font-medium text-white">Admin Kullanıcı</p>
+              <p className="text-sm font-medium text-white">Admin User</p>
               <p className="text-xs text-blue-200">admin@example.com</p>
             </div>
           </div>

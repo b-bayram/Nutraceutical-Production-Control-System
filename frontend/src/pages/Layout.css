@@ -4,11 +4,12 @@
   min-height: 100vh;
 }
 
+
 .sidebar {
   width: 280px;
   background: linear-gradient(180deg, #1a73e8 0%, #1557b0 100%);
   position: fixed;
-  top: 64px;
+  top: 0;  /* This ensures it covers the top bar */
   left: 0;
   bottom: 0;
   transition: all 0.3s ease-in-out;
@@ -16,22 +17,34 @@
   overflow-y: auto;
   box-shadow: 4px 0 10px rgba(0, 0, 0, 0.1);
 }
-
 .sidebar.closed {
   transform: translateX(-100%);
 }
 
 .main-content {
-  margin-left: 280px;
-  margin-top: 64px;
+  position: absolute;
+  top: 64px;
+  right: 0;
+  bottom: 0;
+  left: 0;
   padding: 24px;
   background-color: #f8f9fa;
   min-height: calc(100vh - 64px);
-  transition: margin-left 0.3s ease-in-out;
+  transition: all 0.3s ease-in-out;
+  /* Add animation */
+  animation: fadeInUp 0.3s ease-out;
 }
 
-.main-content.expanded {
-  margin-left: 0;
+/* Define the animation */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @media (max-width: 768px) {

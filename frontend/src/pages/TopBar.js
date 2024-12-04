@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Bell, 
   Search, 
@@ -28,29 +28,49 @@ const TopBar = ({ onMenuClick }) => {
     { id: 3, title: 'Rapor Oluştur', icon: 'file' }
   ];
 
+  const notificationRef = useRef(null);
+  const profileRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+        setNotificationOpen(false);
+      }
+      if (profileRef.current && !profileRef.current.contains(event.target)) {
+        setProfileOpen(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+  
   return (
     <div className="bg-white border-b border-gray-200 fixed w-full top-0 z-50">
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           {/* Sol Bölüm - Logo ve Menü */}
           <div className="flex items-center">
-            <button 
-              className="p-2 rounded-lg text-gray-600 hover:bg-gray-100"
-              onClick={onMenuClick}
-            >
-              <Menu className="h-6 w-6" />
-            </button>
-            <div className="ml-4 font-semibold text-lg text-gray-800">
-              Envanter Yönetimi
-            </div>
-          </div>
+  <button
+    aria-label="menu"
+    className="p-2 rounded-lg text-gray-600 hover:bg-gray-100"
+    onClick={() => onMenuClick()}
+  >
+    <Menu className="h-6 w-6" />
+  </button>
+  <div className="ml-4 font-semibold text-lg text-gray-800">
+    Nutraceutical Production Control System
+  </div>
+</div>
 
           {/* Orta Bölüm - Arama */}
           <div className="flex-1 max-w-2xl mx-4">
             <div className="relative">
               <input
                 type="text"
-                placeholder="Ürün, hammadde veya belge ara..."
+                placeholder="Search"
                 className="w-full bg-gray-50 border border-gray-300 rounded-lg pl-10 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
               <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
@@ -67,7 +87,7 @@ const TopBar = ({ onMenuClick }) => {
             </div>
 
             {/* Bildirimler */}
-            <div className="relative">
+            <div className="relative" ref={notificationRef}>
               <button 
                 onClick={() => setNotificationOpen(!isNotificationOpen)}
                 className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 relative"
@@ -84,7 +104,7 @@ const TopBar = ({ onMenuClick }) => {
               {isNotificationOpen && (
                 <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 py-2">
                   <div className="px-4 py-2 border-b border-gray-200">
-                    <h3 className="font-semibold text-gray-800">Bildirimler</h3>
+                    <h3 className="font-semibold text-gray-800">Notifications</h3>
                   </div>
                   {notifications.map(notification => (
                     <div key={notification.id} className="px-4 py-3 hover:bg-gray-50 cursor-pointer">
@@ -101,7 +121,7 @@ const TopBar = ({ onMenuClick }) => {
                   ))}
                   <div className="px-4 py-2 border-t border-gray-200">
                     <button className="text-sm text-blue-600 hover:text-blue-800">
-                      Tüm bildirimleri gör
+                      See All Notifications
                     </button>
                   </div>
                 </div>
@@ -109,7 +129,7 @@ const TopBar = ({ onMenuClick }) => {
             </div>
 
             {/* Profil */}
-            <div className="relative">
+            <div className="relative" ref={profileRef}>
               <button 
                 onClick={() => setProfileOpen(!isProfileOpen)}
                 className="flex items-center space-x-2 p-2 rounded-lg text-gray-600 hover:bg-gray-100"
@@ -125,16 +145,16 @@ const TopBar = ({ onMenuClick }) => {
                 <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2">
                   <a href="#profile" className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center">
                     <User className="h-4 w-4 mr-2" />
-                    Profilim
+                    My Profile
                   </a>
                   <a href="#settings" className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center">
                     <Settings className="h-4 w-4 mr-2" />
-                    Ayarlar
+                    Settings
                   </a>
                   <div className="border-t border-gray-200 my-1"></div>
                   <a href="#logout" className="px-4 py-2 text-sm text-red-600 hover:bg-gray-50 flex items-center">
                     <LogOut className="h-4 w-4 mr-2" />
-                    Çıkış Yap
+                    Logout
                   </a>
                 </div>
               )}

@@ -18,6 +18,9 @@ function RawMaterials() {
   const [selectedBatch, setSelectedBatch] = useState(null);
   const [isViewModalOpen, setViewModalOpen] = useState(false);
   const [isEditModalOpen, setEditModalOpen] = useState(false);
+  const [selectedBatches, setSelectedBatches] = useState([]);
+  //bulk delete checkboxes
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
 
   useEffect(() => {
     fetchMaterialTypes();
@@ -38,15 +41,25 @@ function RawMaterials() {
 
   const fetchBatches = async () => {
     try {
-      const response = await fetch('http://localhost:5001/api/raw-materials/batches');  // Changed from /types to /batches
-      const data = await response.json();
-      if (data.success) {
-        setMaterials(data.data);
-      }
+        const response = await fetch('http://localhost:5001/api/raw-materials/batches');
+        const data = await response.json();
+        if (data.success) {
+            setMaterials(data.data || []); // Make sure to set an empty array if no data
+            setSelectedBatches([]); // Reset selections whenever we fetch new data
+        }
     } catch (error) {
-      console.error('Error fetching batches:', error);
+        console.error('Error fetching batches:', error);
+        setMaterials([]); // Reset to empty array on error
+        setSelectedBatches([]); // Reset selections on error
     }
-  };
+};
+
+const toggleSelectionMode = () => {
+  setIsSelectionMode(!isSelectionMode);
+  if (isSelectionMode) {
+    setSelectedBatches([]);
+  }
+};
 
   // New handlers for view/edit
   const handleView = async (id) => {
@@ -93,6 +106,44 @@ function RawMaterials() {
       console.error('Error updating batch:', error);
     }
   };
+
+  const handleBulkDelete = async () => {
+    if (!selectedBatches.length) {
+        alert('Please select items to delete');
+        return;
+    }
+
+    console.log('Selected batches:', selectedBatches); // See what we're starting with
+
+    if (window.confirm(`Are you sure you want to delete ${selectedBatches.length} selected items?`)) {
+        try {
+            const payload = { ids: selectedBatches.map(id => parseInt(id)) }; // Convert to integers
+            console.log('Sending payload:', payload);
+
+            const response = await fetch('http://localhost:5001/api/raw-materials/batches/bulk-delete', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            console.log('Response status:', response.status);
+            const data = await response.json();
+            console.log('Response data:', data);
+
+            if (data.success) {
+                setSelectedBatches([]);
+                await fetchBatches();
+            } else {
+                alert('Failed to delete batches: ' + data.error);
+            }
+        } catch (error) {
+            console.error('Error deleting batches:', error);
+            alert('Error deleting batches');
+        }
+    }
+};
 
   const handleAddType = async (typeData) => {
     try {
@@ -144,18 +195,45 @@ function RawMaterials() {
         <div className="header">
           <h1>Raw Materials</h1>
           <div className="header-buttons">
-            <button 
-              className="add-btn"
-              onClick={() => setAddBatchModalOpen(true)}
-            >
-              Add New Batch
-            </button>
-            <button 
-              className="add-type-btn"
-              onClick={() => setAddTypeModalOpen(true)}
-            >
-              Add Material Type
-            </button>
+            {!isSelectionMode ? (
+              <>
+                <button 
+                  className="select-mode-btn"
+                  onClick={toggleSelectionMode}
+                >
+                  Select Items
+                </button>
+                <button 
+                  className="add-btn"
+                  onClick={() => setAddBatchModalOpen(true)}
+                >
+                  Add New Batch
+                </button>
+                <button 
+                  className="add-type-btn"
+                  onClick={() => setAddTypeModalOpen(true)}
+                >
+                  Add Material Type
+                </button>
+              </>
+            ) : (
+              <div className="selection-mode-controls">
+                <span>{selectedBatches.length} items selected</span>
+                <button 
+                  className="cancel-btn"
+                  onClick={toggleSelectionMode}
+                >
+                  Cancel
+                </button>
+                <button 
+                  className="delete-btn"
+                  onClick={handleBulkDelete}
+                  disabled={selectedBatches.length === 0}
+                >
+                  Delete Selected
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -166,43 +244,78 @@ function RawMaterials() {
 
         {/* New table section */}
         <div className="materials-table">
-          <table className="w-full">
-            <thead>
-              <tr>
-                <th>Batch ID</th>
-                <th>Material Type</th>
-                <th>Remaining Amount</th>
-                <th>Supplier</th>
-                <th>Expiration Date</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {materials.map((material) => (
-                <tr key={material.id}>
-                  <td>{material.serialNumber}</td>
-                  <td>{material.materialName}</td>
-                  <td>{material.remainingAmount}</td>
-                  <td>{material.supplierName}</td>
-                  <td>{new Date(material.expirationDate).toLocaleDateString()}</td>
-                  <td>
-                    <button 
-                      onClick={() => handleEdit(material.id)} 
-                      className="edit-btn"
-                    >
-                      Edit
-                    </button>
-                    <button 
-                      onClick={() => handleView(material.id)}
-                      className="view-btn"
-                    >
-                      View
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+            
+            <table className="w-full">
+                <thead>
+                    <tr>
+                    {isSelectionMode && (
+                          <th className="px-4 py-2">
+                            <input
+                              type="checkbox"
+                              checked={selectedBatches.length === materials.length}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedBatches(materials.map(m => m.id));
+                                } else {
+                                  setSelectedBatches([]);
+                                }
+                              }}
+                            />
+                          </th>
+                        )}
+                        <th>Batch ID</th>
+                        <th>Material Type</th>
+                        <th>Remaining Amount</th>
+                        <th>Supplier</th>
+                        <th>Expiration Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {materials.map((material) => (
+                        <tr key={material.id}>
+                            {isSelectionMode && (
+                            <td className="px-4 py-2">
+                              <input
+                                type="checkbox"
+                                checked={selectedBatches.includes(material.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedBatches([...selectedBatches, material.id]);
+                                  } else {
+                                    setSelectedBatches(selectedBatches.filter(id => id !== material.id));
+                                  }
+                                }}
+                              />
+                            </td>
+                            )}
+                            <td>{material.serialNumber}</td>
+                            <td>{material.materialName}</td>
+                            <td>{material.remainingAmount}</td>
+                            <td>{material.supplierName}</td>
+                            <td>{new Date(material.expirationDate).toLocaleDateString()}</td>
+                            <td>
+                            {!isSelectionMode && (
+                              <>
+                                <button 
+                                  onClick={() => handleEdit(material.id)} 
+                                  className="edit-btn"
+                                >
+                                  Edit
+                                </button>
+                                <button 
+                                  onClick={() => handleView(material.id)}
+                                  className="view-btn"
+                                >
+                                  View
+                                </button>
+                              </>
+                            )}
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
         </div>
 
         {/* Existing modals */}

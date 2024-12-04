@@ -1,34 +1,30 @@
 .products-page {
-  padding: 24px;
-  background-color: #f8f9fa;
-  min-height: 100vh;
+  padding: 48px 80px !important;
+  background-color: #f8f9fa !important;
+  min-height: 100vh !important;
+  max-width: 1400px !important;
+  margin: 0 auto !important;
 }
-
 .header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
+  margin-bottom: 40px;
 }
-
 .header h1 {
-  font-size: 24px;
+  font-size: 32px;
   font-weight: 600;
 }
 
+
 .header-buttons {
   display: flex;
-  gap: 12px;
+  gap: 16px;
 }
 
-.add-btn {
-  background-color: #1a73e8;
-  color: white;
-  padding: 8px 16px;
-  border-radius: 4px;
-  border: none;
-  cursor: pointer;
-  transition: background-color 0.2s;
+.add-btn, .export-btn {
+  padding: 10px 20px;
+  font-size: 16px;
 }
 
 .add-btn:hover {
@@ -52,27 +48,21 @@
 .stats-container {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  margin-bottom: 24px;
+  gap: 32px;
+  margin-bottom: 40px;
 }
 
 .stat-card {
-  background: white;
-  padding: 16px;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  padding: 20px;
 }
-
 .stat-label {
-  display: block;
-  color: #666;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 }
 
 .stat-value {
-  font-size: 24px;
-  font-weight: 600;
+  font-size: 28px;
 }
+
 
 .stat-value.total { color: #1a73e8; }
 .stat-value.active { color: #34a853; }
@@ -81,22 +71,14 @@
 
 .search-bar {
   display: flex;
-  gap: 12px;
-  margin-bottom: 24px;
+  gap: 16px;
+  margin-bottom: 32px;
 }
 
-.search-bar input {
-  flex: 1;
-  padding: 8px 12px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-}
-
+.search-bar input,
 .search-bar select {
-  padding: 8px 12px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  min-width: 150px;
+  padding: 10px 14px;
+  font-size: 16px;
 }
 
 .filters-btn {
@@ -112,19 +94,20 @@
   background: white;
   border-radius: 8px;
   border-collapse: collapse;
-  margin-bottom: 24px;
+  margin-bottom: 32px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+
 }
 
 .products-table th {
   text-align: left;
-  padding: 16px;
+  padding: 20px;
   border-bottom: 1px solid #ddd;
   color: #666;
 }
 
 .products-table td {
-  padding: 16px;
+  padding: 20px;
   border-bottom: 1px solid #eee;
 }
 
@@ -203,6 +186,7 @@
 }
 
 .pagination {
+  margin-top: 32px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -218,7 +202,7 @@
 }
 
 .page-btn {
-  padding: 8px 12px;
+  padding: 10px 16px;
   border: 1px solid #ddd;
   background: white;
   border-radius: 4px;
