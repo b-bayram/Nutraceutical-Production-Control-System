@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-
 import { Label } from "../ui/label"
 import { Input } from "../ui/input"
 
-const EditBatchForm = ({ batch, onSubmit, onClose }) => {
+const EditBatchForm = ({ batch, onSubmit, onClose, onDelete }) => {
   const [formData, setFormData] = useState({
     serialNumber: batch?.serialNumber || '',
     remainingAmount: batch?.remainingAmount || '',
@@ -23,6 +22,12 @@ const EditBatchForm = ({ batch, onSubmit, onClose }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     onSubmit(formData);
+  };
+
+  const handleDelete = () => {
+    if (window.confirm('Are you sure you want to delete this batch? This action cannot be undone.')) {
+      onDelete(batch.id);
+    }
   };
 
   if (!batch) return null;
@@ -85,20 +90,32 @@ const EditBatchForm = ({ batch, onSubmit, onClose }) => {
         </div>
       </div>
 
-      <div className="mt-8 flex justify-end space-x-4">
+      <div className="mt-8 flex justify-between">
+        {/* Left side - Delete button */}
         <button
           type="button"
-          onClick={onClose}
-          className="px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+          onClick={handleDelete}
+          className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
         >
-          Cancel
+          Delete Batch
         </button>
-        <button
-          type="submit"
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
-          Save Changes
-        </button>
+
+        {/* Right side - Cancel and Save buttons */}
+        <div className="space-x-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            Save Changes
+          </button>
+        </div>
       </div>
     </form>
   );
