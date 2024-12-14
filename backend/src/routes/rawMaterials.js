@@ -7,6 +7,102 @@ router.get('/test', async (req, res) => {
     res.json({ message: 'Test successful' });
 });
 
+// Bulk delete for raw material types
+router.post('/types/bulk-delete', async (req, res) => {
+    try {
+        const { ids } = req.body; // [1, 2, 3] şeklinde id listesi
+        const pool = await poolPromise;
+        const transaction = await pool.transaction();
+
+        try {
+            await transaction.begin();
+
+            // Önce bu tiplere ait batch'leri kontrol et
+            const checkResult = await transaction.request()
+                .input('ids', sql.VarChar, ids.join(','))
+                .query(`
+                    SELECT COUNT(*) as batchCount 
+                    FROM RawMaterialBatches 
+                    WHERE typeId IN (SELECT value FROM STRING_SPLIT(@ids, ','))
+                `);
+
+            if (checkResult.recordset[0].batchCount > 0) {
+                throw new Error('Bazı hammadde tiplerine ait partiler olduğu için silinemez');
+            }
+
+            // Hammadde tiplerini sil
+            const result = await transaction.request()
+                .input('ids', sql.VarChar, ids.join(','))
+                .query(`
+                    DELETE FROM RawMaterialTypes 
+                    WHERE id IN (SELECT value FROM STRING_SPLIT(@ids, ','))
+                `);
+
+            await transaction.commit();
+
+            res.json({
+                success: true,
+                message: `${ids.length} adet hammadde tipi başarıyla silindi`
+            });
+
+        } catch (err) {
+            await transaction.rollback();
+            throw err;
+        }
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Bulk delete for raw material batches
+router.post('/batches/bulk-delete', async (req, res) => {
+    try {
+        const { ids } = req.body; // [1, 2, 3] şeklinde id listesi
+        const pool = await poolPromise;
+        const transaction = await pool.transaction();
+
+        try {
+            await transaction.begin();
+
+            // Önce üretimde kullanılıp kullanılmadığını kontrol et
+            const checkResult = await transaction.request()
+                .input('ids', sql.VarChar, ids.join(','))
+                .query(`
+                    SELECT COUNT(*) as usageCount 
+                    FROM ProductionMaterials 
+                    WHERE batchId IN (SELECT value FROM STRING_SPLIT(@ids, ','))
+                `);
+
+            if (checkResult.recordset[0].usageCount > 0) {
+                throw new Error('Bazı partiler üretimde kullanıldığı için silinemez');
+            }
+
+            // Partileri sil
+            const result = await transaction.request()
+                .input('ids', sql.VarChar, ids.join(','))
+                .query(`
+                    DELETE FROM RawMaterialBatches 
+                    WHERE id IN (SELECT value FROM STRING_SPLIT(@ids, ','))
+                `);
+
+            await transaction.commit();
+
+            res.json({
+                success: true,
+                message: `${ids.length} adet parti başarıyla silindi`
+            });
+
+        } catch (err) {
+            await transaction.rollback();
+            throw err;
+        }
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+
+
 // Hammadde Tipleri
 router.post('/types', async (req, res) => {
     try {
