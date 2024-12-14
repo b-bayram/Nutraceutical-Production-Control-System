@@ -61,6 +61,53 @@ router.get('/', async (req, res) => {
     }
 });
 
+// Bulk delete for products
+router.post('/bulk-delete', async (req, res) => {
+    try {
+        const { ids } = req.body; // [1, 2, 3] şeklinde id listesi
+        const pool = await poolPromise;
+        const transaction = await pool.transaction();
+
+        try {
+            await transaction.begin();
+
+            // Önce reçeteleri kontrol et
+            const templateCheck = await transaction.request()
+                .input('ids', sql.VarChar, ids.join(','))
+                .query(`
+                    SELECT COUNT(*) as templateCount 
+                    FROM ProductTemplates 
+                    WHERE productId IN (SELECT value FROM STRING_SPLIT(@ids, ','))
+                `);
+
+            if (templateCheck.recordset[0].templateCount > 0) {
+                throw new Error('Bazı ürünlerin reçeteleri olduğu için silinemez');
+            }
+
+            // Ürünleri sil
+            const result = await transaction.request()
+                .input('ids', sql.VarChar, ids.join(','))
+                .query(`
+                    DELETE FROM Products 
+                    WHERE id IN (SELECT value FROM STRING_SPLIT(@ids, ','))
+                `);
+
+            await transaction.commit();
+
+            res.json({
+                success: true,
+                message: `${ids.length} adet ürün başarıyla silindi`
+            });
+
+        } catch (err) {
+            await transaction.rollback();
+            throw err;
+        }
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Ürün Detayı Görüntüleme
 router.get('/:id', async (req, res) => {
     try {
