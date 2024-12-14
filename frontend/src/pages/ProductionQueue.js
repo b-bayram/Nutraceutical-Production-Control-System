@@ -3,6 +3,7 @@ import Layout from './Layout';
 import axios from 'axios';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import Modal from './Modal';
+import BulkProductionModal from '../components/production/BulkProductionModal';
 
 const ProductionQueue = () => {
   // State tanımlamaları
@@ -19,6 +20,10 @@ const ProductionQueue = () => {
   const [isDetailsModalOpen, setDetailsModalOpen] = useState(false);
   const [isBulkProductionModalOpen, setBulkProductionModalOpen] = useState(false);
   const [selectedProduction, setSelectedProduction] = useState(null);
+
+  useEffect(() => {
+    console.log('Modal open state changed:', isBulkProductionModalOpen);
+  }, [isBulkProductionModalOpen]);
 
   // Filter states
   const [filters, setFilters] = useState({
@@ -228,19 +233,7 @@ const ProductionQueue = () => {
     </div>
   );
 
-  const BulkProductionModal = ({ onClose }) => (
-    <div className="p-6">
-      <h2 className="text-xl font-bold mb-4">Start Bulk Production</h2>
-      <div className="mt-6 flex justify-end gap-2">
-        <button 
-          onClick={onClose}
-          className="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-md"
-        >
-          Cancel
-        </button>
-      </div>
-    </div>
-  );
+ 
 
   return (
     <Layout>
@@ -446,7 +439,10 @@ const ProductionQueue = () => {
               Search
             </button>
             <button
-              onClick={() => setBulkProductionModalOpen(true)}
+              onClick={() => {
+                console.log('Button clicked'); // Add this log
+                setBulkProductionModalOpen(true);
+              }}
               className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md ml-auto"
             >
               Start Bulk Production
@@ -548,9 +544,17 @@ const ProductionQueue = () => {
         </Modal>
 
         <Modal isOpen={isBulkProductionModalOpen} onClose={() => setBulkProductionModalOpen(false)}>
-          <BulkProductionModal 
-            onClose={() => setBulkProductionModalOpen(false)}
-          />
+          {isBulkProductionModalOpen && (  // Add this conditional render
+            <BulkProductionModal 
+              onClose={() => {
+                setBulkProductionModalOpen(false);
+              }}
+              onSuccess={() => {
+                fetchProductions();
+                setBulkProductionModalOpen(false);
+              }}
+            />
+          )}
         </Modal>
       </div>
     </Layout>

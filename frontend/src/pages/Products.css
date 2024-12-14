@@ -315,3 +315,19 @@
   margin: 1rem 0;
   text-align: center;
 }
+/*search bar*/
+.search-section {
+  width: 100%;
+  z-index: 10;
+}
+
+.search-bar-wrapper {
+  width: 100%;
+  background: white;
+}
+
+.filter-panel-wrapper {
+  width: 100%;
+  margin-top: 0.5rem;
+  background: white;
+}
