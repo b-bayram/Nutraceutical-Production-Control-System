@@ -586,80 +586,215 @@ router.delete('/:id/recipe', async (req, res) => {
 });
 
 // Ürün arama ve filtreleme
-router.get('/search', async (req, res) => {
+router.get('/filter', async (req, res) => {
     try {
-        const { 
-            name,           // ürün adında arama
-            hasRecipe,      // reçetesi olan/olmayan
-            createdAfter,   // belirli bir tarihten sonra oluşturulanlar
-            createdBefore   // belirli bir tarihten önce oluşturulanlar
+        const {
+            search,          // ürün adı veya açıklamasında arama
+            hasRecipe,      // reçetesi var mı? (true/false)
+            minQuantity,    // minimum üretim miktarı
+            maxQuantity,    // maksimum üretim miktarı
+            recipeVersion,  // reçete versiyonu
+            materialType,   // içerdiği hammadde tipi
+            startDate,      // başlangıç tarihi
+            endDate,        // bitiş tarihi
+            sortBy,         // sıralama kriteri
+            sortOrder,      // sıralama yönü (asc/desc)
+            page = 1,       // sayfa numarası
+            limit = 10      // sayfa başına ürün sayısı
         } = req.query;
 
         const pool = await poolPromise;
         let query = `
-            SELECT 
-                p.*,
-                CASE 
-                    WHEN pt.id IS NOT NULL THEN 1 
-                    ELSE 0 
-                END as hasActiveRecipe,
-                pt.version as recipeVersion
+            SELECT DISTINCT
+                p.id,
+                p.name,
+                p.description,
+                p.createdAt,
+                pt.version as recipeVersion,
+                (
+                    SELECT COUNT(*) 
+                    FROM ProductTemplates 
+                    WHERE productId = p.id AND isActive = 1
+                ) as hasActiveRecipe,
+                (
+                    SELECT COUNT(*) 
+                    FROM Productions 
+                    WHERE productTemplateId IN (SELECT id FROM ProductTemplates WHERE productId = p.id)
+                ) as totalProductions
             FROM Products p
             LEFT JOIN ProductTemplates pt ON p.id = pt.productId AND pt.isActive = 1
+            LEFT JOIN RecipeItems ri ON pt.id = ri.productTemplateId
+            LEFT JOIN RawMaterialTypes rmt ON ri.rawMaterialTypeId = rmt.id
             WHERE 1=1
         `;
 
         const params = [];
 
-        if (name) {
-            query += ` AND p.name LIKE @name`;
+        // Ürün adı veya açıklamasında arama
+        if (search) {
+            query += ` AND (p.name LIKE @search OR p.description LIKE @search)`;
             params.push({
-                name: 'name',
-                value: `%${name}%`,
+                name: 'search',
+                value: `%${search}%`,
                 type: sql.NVarChar
             });
         }
 
+        // Reçete filtresi
         if (hasRecipe === 'true') {
-            query += ` AND pt.id IS NOT NULL`;
+            query += ` AND EXISTS (SELECT 1 FROM ProductTemplates WHERE productId = p.id AND isActive = 1)`;
         } else if (hasRecipe === 'false') {
-            query += ` AND pt.id IS NULL`;
+            query += ` AND NOT EXISTS (SELECT 1 FROM ProductTemplates WHERE productId = p.id AND isActive = 1)`;
         }
 
-        if (createdAfter) {
-            query += ` AND p.createdAt >= @createdAfter`;
+        // Üretim miktarı filtresi
+        if (minQuantity) {
+            query += ` AND EXISTS (
+                SELECT 1 FROM Productions pr
+                JOIN ProductTemplates pt2 ON pr.productTemplateId = pt2.id
+                WHERE pt2.productId = p.id AND pr.quantity >= @minQuantity
+            )`;
             params.push({
-                name: 'createdAfter',
-                value: new Date(createdAfter),
+                name: 'minQuantity',
+                value: parseInt(minQuantity),
+                type: sql.Int
+            });
+        }
+
+        if (maxQuantity) {
+            query += ` AND EXISTS (
+                SELECT 1 FROM Productions pr
+                JOIN ProductTemplates pt2 ON pr.productTemplateId = pt2.id
+                WHERE pt2.productId = p.id AND pr.quantity <= @maxQuantity
+            )`;
+            params.push({
+                name: 'maxQuantity',
+                value: parseInt(maxQuantity),
+                type: sql.Int
+            });
+        }
+
+        // Reçete versiyon filtresi
+        if (recipeVersion) {
+            query += ` AND pt.version = @recipeVersion`;
+            params.push({
+                name: 'recipeVersion',
+                value: recipeVersion,
+                type: sql.NVarChar
+            });
+        }
+
+        // Hammadde tipi filtresi
+        if (materialType) {
+            query += ` AND EXISTS (
+                SELECT 1 FROM RecipeItems ri2
+                JOIN ProductTemplates pt3 ON ri2.productTemplateId = pt3.id
+                WHERE pt3.productId = p.id
+                AND ri2.rawMaterialTypeId = @materialType
+            )`;
+            params.push({
+                name: 'materialType',
+                value: parseInt(materialType),
+                type: sql.Int
+            });
+        }
+
+        // Tarih filtresi
+        if (startDate) {
+            query += ` AND p.createdAt >= @startDate`;
+            params.push({
+                name: 'startDate',
+                value: new Date(startDate),
                 type: sql.DateTime
             });
         }
 
-        if (createdBefore) {
-            query += ` AND p.createdAt <= @createdBefore`;
+        if (endDate) {
+            query += ` AND p.createdAt <= @endDate`;
             params.push({
-                name: 'createdBefore',
-                value: new Date(createdBefore),
+                name: 'endDate',
+                value: new Date(endDate),
                 type: sql.DateTime
             });
         }
 
-        query += ` ORDER BY p.name`;
+        // Sıralama
+        const validSortColumns = ['name', 'createdAt', 'totalProductions'];
+        const sortColumn = validSortColumns.includes(sortBy) ? sortBy : 'name';
+        const order = sortOrder?.toLowerCase() === 'desc' ? 'DESC' : 'ASC';
+        
+        query += ` ORDER BY ${
+            sortColumn === 'totalProductions' 
+                ? 'totalProductions' 
+                : `p.${sortColumn}`
+        } ${order}`;
+
+        // Sayfalama
+        const offset = (page - 1) * limit;
+        query += ` OFFSET ${offset} ROWS FETCH NEXT ${limit} ROWS ONLY`;
+
+        // Toplam kayıt sayısını alma
+        const countQuery = `
+            SELECT COUNT(DISTINCT p.id) as total
+            FROM Products p
+            LEFT JOIN ProductTemplates pt ON p.id = pt.productId AND pt.isActive = 1
+            LEFT JOIN RecipeItems ri ON pt.id = ri.productTemplateId
+            LEFT JOIN RawMaterialTypes rmt ON ri.rawMaterialTypeId = rmt.id
+            WHERE 1=1
+        `;
 
         let request = pool.request();
         params.forEach(p => request.input(p.name, p.type, p.value));
 
-        const result = await request.query(query);
+        const [results, countResult] = await Promise.all([
+            request.query(query),
+            request.query(countQuery)
+        ]);
+
+        const total = countResult.recordset[0].total;
+        const totalPages = Math.ceil(total / limit);
 
         res.json({
             success: true,
-            data: result.recordset
+            data: {
+                products: results.recordset,
+                pagination: {
+                    total,
+                    totalPages,
+                    currentPage: parseInt(page),
+                    limit: parseInt(limit)
+                }
+            }
         });
 
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
+
+/*
+ Temel arama
+GET /api/products/filter?search=çikolata
+
+ Reçetesi olan ürünler
+GET /api/products/filter?hasRecipe=true
+
+ Belirli bir hammaddeyi içeren ürünler
+GET /api/products/filter?materialType=1
+
+ Tarih aralığında oluşturulan ürünler
+GET /api/products/filter?startDate=2024-01-01&endDate=2024-12-31
+
+ Sıralama
+GET /api/products/filter?sortBy=name&sortOrder=desc
+
+ Sayfalama
+GET /api/products/filter?page=2&limit=20
+
+ Kombine filtreleme
+GET /api/products/filter?search=çikolata&hasRecipe=true&materialType=1&sortBy=name&page=1&limit=10
+
+ */
 
 // Reçete geçmişini görüntüleme
 router.get('/:id/recipe/history', async (req, res) => {

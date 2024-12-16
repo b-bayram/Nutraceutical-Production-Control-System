@@ -201,7 +201,13 @@ router.post('/batches', async (req, res) => {
 
 router.get('/batches', async (req, res) => {
     try {
-        const { typeId, supplierId } = req.query;
+        const { 
+            typeId, 
+            supplierId,
+            sortBy = 'purchaseDate',  // Varsayılan sıralama kriteri
+            sortOrder = 'DESC'        // Varsayılan sıralama yönü
+        } = req.query;
+        
         const pool = await poolPromise;
 
         let query = `
@@ -216,6 +222,7 @@ router.get('/batches', async (req, res) => {
         `;
 
         const params = [];
+
         if (typeId) {
             query += ' AND b.typeId = @typeId';
             params.push({
@@ -234,7 +241,20 @@ router.get('/batches', async (req, res) => {
             });
         }
 
-        query += ' ORDER BY b.purchaseDate DESC';
+        // Geçerli sıralama kriterleri
+        const validSortColumns = {
+            'remainingAmount': 'b.remainingAmount',
+            'purchaseDate': 'b.purchaseDate',
+            'expirationDate': 'b.expirationDate',
+            'materialName': 't.name',
+            'supplierName': 'c.name'
+        };
+
+        // Sıralama kriterini kontrol et
+        const sortColumn = validSortColumns[sortBy] || 'b.purchaseDate';
+        const order = sortOrder.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+        
+        query += ` ORDER BY ${sortColumn} ${order}`;
 
         let request = pool.request();
         params.forEach(p => request.input(p.name, p.type, p.value));

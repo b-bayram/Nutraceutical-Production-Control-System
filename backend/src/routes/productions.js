@@ -363,6 +363,58 @@ router.put('/:id/stage', async (req, res) => {
         const { stage } = req.body;
         const pool = await poolPromise;
 
+        // Geçerli stage'leri veritabanındaki constraint'e göre tanımla 
+        const validStages = ['cancelled', 'sent', 'produced', 'producing', 'preparation'];
+        
+        // Stage validasyonu
+        if (!validStages.includes(stage)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Geçersiz üretim aşaması. Geçerli aşamalar: ' + validStages.join(', ')
+            });
+        }
+
+        // Mevcut stage'i kontrol et
+        const currentStageResult = await pool.request()
+            .input('id', sql.Int, id)
+            .query(`
+                SELECT stage 
+                FROM Productions 
+                WHERE id = @id
+            `);
+
+        if (currentStageResult.recordset.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Üretim bulunamadı'
+            });
+        }
+
+        const currentStage = currentStageResult.recordset[0].stage;
+
+        // Stage geçiş kontrolü
+        if (currentStage === 'produced' && stage !== 'sent') {
+            return res.status(400).json({
+                success: false,
+                message: 'Üretilmiş durumdan sadece gönderildi durumuna geçilebilir'
+            });
+        }
+
+        if (currentStage === 'cancelled') {
+            return res.status(400).json({
+                success: false,
+                message: 'İptal edilmiş üretimin aşaması değiştirilemez'
+            });
+        }
+
+        if (currentStage === 'sent') {
+            return res.status(400).json({
+                success: false,
+                message: 'Gönderilmiş üretimin aşaması değiştirilemez'
+            });
+        }
+
+        // Stage güncelleme
         const stageResult = await pool.request()
             .input('id', sql.Int, id)
             .input('stage', sql.NVarChar, stage)
@@ -372,16 +424,14 @@ router.put('/:id/stage', async (req, res) => {
                 WHERE id = @id
             `);
 
-        if (stageResult.rowsAffected[0] === 0) {
-            return res.status(404).json({
-                success: false,
-                message: 'Üretim bulunamadı'
-            });
-        }
-
         res.json({
             success: true,
-            message: 'Üretim aşaması başarıyla güncellendi'
+            message: 'Üretim aşaması başarıyla güncellendi',
+            data: {
+                id,
+                previousStage: currentStage,
+                currentStage: stage
+            }
         });
 
     } catch (error) {
