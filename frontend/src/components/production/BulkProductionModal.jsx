@@ -91,7 +91,7 @@ const BulkProductionModal = ({ onClose, onSuccess }) => {
 
   const handleBatchSelect = (productionIndex, materialIndex, batchId) => {
     const updatedProductions = [...selectedProductions];
-    updatedProductions[productionIndex].materials[materialIndex].selectedBatchId = batchId;
+    updatedProductions[productionIndex].materials[materialIndex].selectedBatchId = parseInt(batchId);
     setSelectedProductions(updatedProductions);
   };
 
@@ -107,14 +107,49 @@ const BulkProductionModal = ({ onClose, onSuccess }) => {
   };
 
   const validateProduction = (production) => {
-    if (!production.productId || !production.quantity || production.quantity < 1) return false;
+    // Temel doğrulamalar
+    if (!production.productId || !production.quantity || production.quantity < 1) {
+      console.log('Basic validation failed:', { 
+        hasProductId: !!production.productId, 
+        quantity: production.quantity 
+      });
+      return false;
+    }
     
-    return production.materials.every(material => {
-      if (!material.selectedBatchId) return false;
-      const selectedBatch = material.batches.find(b => b.id === material.selectedBatchId);
-      return selectedBatch && selectedBatch.remainingAmount >= material.amountNeeded;
+    // Malzeme doğrulaması
+    if (!production.materials || production.materials.length === 0) {
+      console.log('No materials found');
+      return false;
+    }
+
+    // Her malzeme için parti ve miktar kontrolü
+    const materialsValid = production.materials.every(material => {
+      if (!material.selectedBatchId) {
+        console.log('Missing batch for material:', material);
+        return false;
+      }
+
+      const selectedBatch = material.batches.find(b => b.id === parseInt(material.selectedBatchId));
+      if (!selectedBatch) {
+        console.log('Batch not found:', material.selectedBatchId);
+        return false;
+      }
+
+      if (selectedBatch.remainingAmount < material.amountNeeded) {
+        console.log('Insufficient amount:', {
+          remaining: selectedBatch.remainingAmount,
+          needed: material.amountNeeded
+        });
+        return false;
+      }
+
+      return true;
     });
+
+    console.log('Materials validation result:', materialsValid);
+    return materialsValid;
   };
+
 
   const handleSubmit = async () => {
     try {
@@ -124,11 +159,11 @@ const BulkProductionModal = ({ onClose, onSuccess }) => {
       const productionsToSubmit = selectedProductions
         .filter(validateProduction)
         .map(({ templateId, quantity, materials }) => ({
-          productTemplateId: templateId,
-          quantity,
+          productTemplateId: parseInt(templateId),
+          quantity: parseInt(quantity),
           selectedMaterials: materials.map(m => ({
-            batchId: m.selectedBatchId,
-            amountUsed: m.amountNeeded
+            batchId: parseInt(m.selectedBatchId),
+            amountUsed: parseFloat(m.amountNeeded)
           }))
         }));
 
@@ -154,32 +189,41 @@ const BulkProductionModal = ({ onClose, onSuccess }) => {
 
   return (
     <div className="p-6 max-w-4xl w-full">
-      <h2 className="text-xl font-bold mb-4">Start Bulk Production</h2>
-
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold">Start Bulk Production</h2>
+        {error && (
+          <div className="text-sm px-3 py-1 bg-red-100 text-red-600 rounded-md">
+            {error}
+          </div>
+        )}
+      </div>
+  
       <div className="space-y-6">
         {selectedProductions.map((production, productionIndex) => (
-          <div key={productionIndex} className="p-4 border rounded-lg bg-gray-50">
-            <div className="flex justify-between mb-4">
-              <h3 className="font-medium">Production {productionIndex + 1}</h3>
+          <div key={productionIndex} className="p-6 border rounded-xl bg-white shadow-sm">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-lg font-semibold text-gray-800">
+                Production {productionIndex + 1}
+              </h3>
               {productionIndex > 0 && (
                 <button
                   onClick={() => removeProduction(productionIndex)}
-                  className="text-red-600 hover:text-red-800"
+                  className="text-sm px-3 py-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md transition-colors"
                 >
-                  Remove
+                  Remove Production
                 </button>
               )}
             </div>
-
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+  
+            <div className="grid grid-cols-2 gap-6 mb-6">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">
                   Product
                 </label>
                 <select
                   value={production.productId}
                   onChange={(e) => handleProductChange(productionIndex, e.target.value)}
-                  className="w-full p-2 border rounded-md"
+                  className="w-full p-2.5 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 >
                   <option value="">Select Product</option>
                   {products.map(product => (
@@ -189,9 +233,9 @@ const BulkProductionModal = ({ onClose, onSuccess }) => {
                   ))}
                 </select>
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+  
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">
                   Quantity
                 </label>
                 <input
@@ -199,34 +243,37 @@ const BulkProductionModal = ({ onClose, onSuccess }) => {
                   min="1"
                   value={production.quantity}
                   onChange={(e) => handleQuantityChange(productionIndex, e.target.value)}
-                  className="w-full p-2 border rounded-md"
+                  className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 />
               </div>
             </div>
-
+  
             {production.materials.length > 0 && (
-              <div className="mt-4">
-                <h4 className="font-medium mb-2">Required Materials:</h4>
-                <div className="space-y-3">
+              <div className="space-y-4">
+                <h4 className="font-medium text-gray-800">Required Materials</h4>
+                <div className="space-y-4">
                   {production.materials.map((material, materialIndex) => (
-                    <div key={materialIndex} className="p-3 bg-white rounded border">
-                      <div className="flex justify-between mb-2">
-                        <span className="font-medium">{material.materialName}</span>
-                        <span className="text-gray-600">
+                    <div key={materialIndex} className="p-4 rounded-lg bg-gray-50 border border-gray-200">
+                      <div className="flex justify-between items-center mb-3">
+                        <span className="font-medium text-gray-800">
+                          {material.materialName}
+                        </span>
+                        <span className="text-sm px-2 py-1 bg-blue-100 text-blue-800 rounded-md">
                           Required: {material.amountNeeded.toFixed(2)}g
                         </span>
                       </div>
                       <select
                         value={material.selectedBatchId}
                         onChange={(e) => handleBatchSelect(productionIndex, materialIndex, e.target.value)}
-                        className="w-full p-2 border rounded-md bg-gray-50"
+                        className="w-full p-2.5 border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                       >
                         <option value="">Select Batch</option>
                         {material.batches.map(batch => (
-                          <option 
-                            key={batch.id} 
+                          <option
+                            key={batch.id}
                             value={batch.id}
                             disabled={batch.remainingAmount < material.amountNeeded}
+                            className={batch.remainingAmount < material.amountNeeded ? 'text-gray-400' : ''}
                           >
                             Batch #{batch.serialNumber} - {batch.remainingAmount}g available
                           </option>
@@ -240,33 +287,40 @@ const BulkProductionModal = ({ onClose, onSuccess }) => {
           </div>
         ))}
       </div>
-
+  
       <button
         onClick={addProduction}
-        className="mt-4 text-blue-600 hover:text-blue-800"
+        className="mt-6 flex items-center text-blue-600 hover:text-blue-800 font-medium transition-colors"
       >
-        + Add Another Production
+        <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+        </svg>
+        Add Another Production
       </button>
-
-      {error && (
-        <div className="mt-4 p-2 bg-red-100 text-red-600 rounded">
-          {error}
-        </div>
-      )}
-
-      <div className="mt-6 flex justify-end gap-2">
+  
+      <div className="mt-8 pt-4 border-t flex justify-end gap-3">
         <button
           onClick={onClose}
-          className="px-4 py-2 text-gray-600 border rounded-md hover:bg-gray-50"
+          className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
         >
           Cancel
         </button>
         <button
           onClick={handleSubmit}
           disabled={loading || selectedProductions.every(p => !validateProduction(p))}
-          className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50"
+          className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center"
         >
-          {loading ? 'Starting Productions...' : 'Start Productions'}
+          {loading ? (
+            <>
+              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+              Starting Productions...
+            </>
+          ) : (
+            'Start Productions'
+          )}
         </button>
       </div>
     </div>

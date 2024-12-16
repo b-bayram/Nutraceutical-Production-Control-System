@@ -5,6 +5,42 @@ import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import Modal from './Modal';
 import BulkProductionModal from '../components/production/BulkProductionModal';
 
+// API Service
+const productionAPI = {
+  updateStage: async (productionId, newStage) => {
+    try {
+      const response = await axios.put(`http://localhost:5001/api/productions/${productionId}/stage`, {
+        stage: newStage
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Production stage update error:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+  
+  startProduction: async (productionId) => {
+    return productionAPI.updateStage(productionId, 'inProgress');
+  },
+  
+  completeProduction: async (productionId) => {
+    return productionAPI.updateStage(productionId, 'completed');
+  },
+  
+  cancelProduction: async (productionId) => {
+    try {
+      const response = await axios.post(`http://localhost:5001/api/productions/${productionId}/cancel`);
+      return response.data;
+    } catch (error) {
+      console.error('Production cancel error:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+};
+
+
+
+
 const ProductionQueue = () => {
   // State tanımlamaları
   const [productions, setProductions] = useState([]);
@@ -38,6 +74,56 @@ const ProductionQueue = () => {
   }, []);
 
   // API fonksiyonları
+  const DroppableColumn = ({ title, productions, droppableId }) => (
+    <div className="bg-gray-50 rounded-lg p-4">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="font-semibold text-lg">{title}</h2>
+        <span className="px-2 py-1 bg-gray-200 rounded-full text-sm">
+          {productions.length}
+        </span>
+      </div>
+      <Droppable droppableId={droppableId}>
+        {(provided) => (
+          <div
+            {...provided.droppableProps}
+            ref={provided.innerRef}
+            className="space-y-4"
+          >
+            {productions.map((production, index) => (
+              <Draggable
+                key={production.id}
+                draggableId={production.id.toString()}
+                index={index}
+              >
+                {(provided) => (
+                  <div
+                    ref={provided.innerRef}
+                    {...provided.draggableProps}
+                    {...provided.dragHandleProps}
+                  >
+                    <ProductionCard 
+                      production={production}
+                      onStartProduction={async (id) => {
+                        await productionAPI.startProduction(id);
+                        await fetchProductions();
+                      }}
+                      onComplete={async (id) => {
+                        await productionAPI.completeProduction(id);
+                        await fetchProductions();
+                      }}
+                      onViewDetails={handleViewDetails}
+                    />
+                  </div>
+                )}
+              </Draggable>
+            ))}
+            {provided.placeholder}
+          </div>
+        )}
+      </Droppable>
+    </div>
+  );
+
   const fetchProductions = async () => {
     try {
       setLoading(true);
@@ -54,22 +140,34 @@ const ProductionQueue = () => {
 
   const handleStageUpdate = async (productionId, newStage) => {
     try {
-      await axios.put(`http://localhost:5001/api/productions/${productionId}/stage`, {
-        stage: newStage
-      });
-      await fetchProductions();
+      const response = await productionAPI.updateStage(productionId, newStage);
+      if (response.success) {
+        await fetchProductions();
+      }
     } catch (error) {
       console.error('Error updating stage:', error);
+      alert('Failed to update production stage: ' + error.message);
+    }
+  };
+
+  const handleStart = async (productionId) => {
+    try {
+      await handleStageUpdate(productionId, 'inProgress');
+    } catch (error) {
+      console.error('Error starting production:', error);
     }
   };
 
   const handleCancelProduction = async (productionId) => {
     if (!window.confirm('Are you sure you want to cancel this production?')) return;
     try {
-      await axios.post(`http://localhost:5001/api/productions/${productionId}/cancel`);
-      await fetchProductions();
+      const response = await productionAPI.cancelProduction(productionId);
+      if (response.success) {
+        await fetchProductions();
+      }
     } catch (error) {
       console.error('Error canceling production:', error);
+      alert('Failed to cancel production: ' + error.message);
     }
   };
 
@@ -131,28 +229,55 @@ const ProductionQueue = () => {
 
   const handleDragEnd = async (result) => {
     if (!result.destination) return;
-
+  
     const stages = {
       preparation: 'preparation',
       inProgress: 'inProgress',
       completed: 'completed'
     };
-
+  
     const productionId = result.draggableId;
     const newStage = stages[result.destination.droppableId];
-
+  
     try {
-      await axios.put(`http://localhost:5001/api/productions/${productionId}/stage`, {
-        stage: newStage
-      });
-      fetchProductions();
+      await productionAPI.updateStage(productionId, newStage);
+      await fetchProductions();
     } catch (error) {
       console.error('Error updating stage:', error);
+      alert('Failed to update production stage: ' + error.message);
     }
   };
 
-  // ProductionCard Component
-  const ProductionCard = ({ production }) => (
+ // ProductionQueue.js içindeki ProductionCard bileşenini güncelleyelim
+
+ const ProductionCard = ({ production, onStartProduction, onComplete, onViewDetails }) => {
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleStart = async () => {
+    try {
+      setIsLoading(true);
+      await onStartProduction(production.id);
+    } catch (error) {
+      console.error('Error starting production:', error);
+      alert('Failed to start production: ' + error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleComplete = async () => {
+    try {
+      setIsLoading(true);
+      await onComplete(production.id);
+    } catch (error) {
+      console.error('Error completing production:', error);
+      alert('Failed to complete production: ' + error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
     <div className="bg-white p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow">
       <div className="flex justify-between items-start mb-3">
         <h3 className="font-semibold text-lg text-gray-800">{production.productName}</h3>
@@ -175,30 +300,56 @@ const ProductionQueue = () => {
 
       <div className="flex justify-between items-center mt-4 pt-3 border-t">
         <button 
-          onClick={() => handleViewDetails(production.id)}
+          onClick={() => onViewDetails(production.id)}
           className="text-gray-600 hover:text-gray-800 text-sm"
+          disabled={isLoading}
         >
           View Details
         </button>
+        
         {production.stage === 'preparation' && (
           <button
-            onClick={() => handleStageUpdate(production.id, 'inProgress')}
-            className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-md text-sm"
+            onClick={handleStart}
+            disabled={isLoading}
+            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Start Production
+            {isLoading ? (
+              <div className="flex items-center">
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                </svg>
+                Starting...
+              </div>
+            ) : (
+              'Start Production'
+            )}
           </button>
         )}
+        
         {production.stage === 'inProgress' && (
           <button
-            onClick={() => handleStageUpdate(production.id, 'completed')}
-            className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-md text-sm"
+            onClick={handleComplete}
+            disabled={isLoading}
+            className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Complete
+            {isLoading ? (
+              <div className="flex items-center">
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                </svg>
+                Completing...
+              </div>
+            ) : (
+              'Complete'
+            )}
           </button>
         )}
       </div>
     </div>
   );
+};
 
   // Modal Components
   const ProductionDetailsModal = ({ production, onClose }) => (
@@ -282,116 +433,21 @@ const ProductionQueue = () => {
 
         <DragDropContext onDragEnd={handleDragEnd}>
           <div className="grid grid-cols-3 gap-6">
-            <div className="bg-gray-50 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-semibold text-lg">In Preparation</h2>
-                <span className="px-2 py-1 bg-gray-200 rounded-full text-sm">
-                  {getProductionsByStage('preparation').length}
-                </span>
-              </div>
-              <Droppable droppableId="preparation">
-                {(provided) => (
-                  <div
-                    {...provided.droppableProps}
-                    ref={provided.innerRef}
-                    className="space-y-4"
-                  >
-                    {getProductionsByStage('preparation').map((production, index) => (
-                      <Draggable
-                        key={production.id}
-                        draggableId={production.id.toString()}
-                        index={index}
-                      >
-                        {(provided) => (
-                          <div
-                            ref={provided.innerRef}
-                            {...provided.draggableProps}
-                            {...provided.dragHandleProps}
-                          >
-                            <ProductionCard production={production} />
-                          </div>
-                        )}
-                      </Draggable>
-                    ))}
-                    {provided.placeholder}
-                  </div>
-                )}
-              </Droppable>
-            </div>
-
-            <div className="bg-gray-50 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-semibold text-lg">In Progress</h2>
-                <span className="px-2 py-1 bg-gray-200 rounded-full text-sm">
-                  {getProductionsByStage('inProgress').length}
-                </span>
-              </div>
-              <Droppable droppableId="inProgress">
-                {(provided) => (
-                  <div
-                    {...provided.droppableProps}
-                    ref={provided.innerRef}
-                    className="space-y-4"
-                  >
-                    {getProductionsByStage('inProgress').map((production, index) => (
-                      <Draggable
-                        key={production.id}
-                        draggableId={production.id.toString()}
-                        index={index}
-                      >
-                        {(provided) => (
-                          <div
-                            ref={provided.innerRef}
-                            {...provided.draggableProps}
-                            {...provided.dragHandleProps}
-                          >
-                            <ProductionCard production={production} />
-                          </div>
-                        )}
-                      </Draggable>
-                    ))}
-                    {provided.placeholder}
-                  </div>
-                )}
-              </Droppable>
-            </div>
-
-            <div className="bg-gray-50 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-semibold text-lg">Completed</h2>
-                <span className="px-2 py-1 bg-gray-200 rounded-full text-sm">
-                  {getProductionsByStage('completed').length}
-                </span>
-              </div>
-              <Droppable droppableId="completed">
-                {(provided) => (
-                  <div
-                    {...provided.droppableProps}
-                    ref={provided.innerRef}
-                    className="space-y-4"
-                  >
-                    {getProductionsByStage('completed').map((production, index) => (
-                      <Draggable
-                        key={production.id}
-                        draggableId={production.id.toString()}
-                        index={index}
-                      >
-                        {(provided) => (
-                          <div
-                            ref={provided.innerRef}
-                            {...provided.draggableProps}
-                            {...provided.dragHandleProps}
-                          >
-                            <ProductionCard production={production} />
-                          </div>
-                        )}
-                      </Draggable>
-                    ))}
-                    {provided.placeholder}
-                  </div>
-                )}
-              </Droppable>
-            </div>
+            <DroppableColumn
+              title="In Preparation"
+              productions={getProductionsByStage('preparation')}
+              droppableId="preparation"
+            />
+            <DroppableColumn
+              title="In Progress"
+              productions={getProductionsByStage('inProgress')}
+              droppableId="inProgress"
+            />
+            <DroppableColumn
+              title="Completed"
+              productions={getProductionsByStage('completed')}
+              droppableId="completed"
+            />
           </div>
         </DragDropContext>
 
@@ -500,11 +556,19 @@ const ProductionQueue = () => {
                       {production.stage === 'preparation' && (
                         <>
                           <button 
-                            onClick={() => handleStageUpdate(production.id, 'inProgress')}
-                            className="text-blue-600 hover:text-blue-900"
-                          >
-                            Start
-                          </button>
+                          onClick={async () => {
+                            try {
+                              await productionAPI.startProduction(production.id);
+                              await fetchProductions();
+                            } catch (error) {
+                              console.error('Error starting production:', error);
+                              alert('Failed to start production: ' + error.message);
+                            }
+                          }}
+                          className="text-blue-600 hover:text-blue-900"
+                        >
+                          Start
+                        </button>
                           <button 
                             onClick={() => handleCancelProduction(production.id)}
                             className="text-red-600 hover:text-red-900"
