@@ -5,7 +5,17 @@ import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import Modal from './Modal';
 import BulkProductionModal from '../components/production/BulkProductionModal';
 
+const PRODUCTION_STAGES = {
+  PREPARATION: 'preparation',
+  PRODUCING: 'producing',
+  PRODUCED: 'produced',
+  SENT: 'sent',
+  CANCELLED: 'cancelled'
+};
+
+
 // API Service
+// Update the productionAPI object
 const productionAPI = {
   updateStage: async (productionId, newStage) => {
     try {
@@ -20,21 +30,19 @@ const productionAPI = {
   },
   
   startProduction: async (productionId) => {
-    return productionAPI.updateStage(productionId, 'inProgress');
+    return productionAPI.updateStage(productionId, PRODUCTION_STAGES.PRODUCING);
   },
   
   completeProduction: async (productionId) => {
-    return productionAPI.updateStage(productionId, 'completed');
+    return productionAPI.updateStage(productionId, PRODUCTION_STAGES.PRODUCED);
+  },
+
+  sendProduction: async (productionId) => {
+    return productionAPI.updateStage(productionId, PRODUCTION_STAGES.SENT);
   },
   
   cancelProduction: async (productionId) => {
-    try {
-      const response = await axios.post(`http://localhost:5001/api/productions/${productionId}/cancel`);
-      return response.data;
-    } catch (error) {
-      console.error('Production cancel error:', error.response?.data || error.message);
-      throw error;
-    }
+    return productionAPI.updateStage(productionId, PRODUCTION_STAGES.CANCELLED);
   }
 };
 
@@ -72,6 +80,11 @@ const ProductionQueue = () => {
   useEffect(() => {
     fetchProductions();
   }, []);
+  useEffect(() => {
+    if (productions.length > 0) {
+      calculateStats(productions);
+    }
+  }, [productions]);
 
   // API fonksiyonları
   const DroppableColumn = ({ title, productions, droppableId }) => (
@@ -87,19 +100,26 @@ const ProductionQueue = () => {
           <div
             {...provided.droppableProps}
             ref={provided.innerRef}
-            className="space-y-4"
+            className="space-y-4 min-h-[200px]"
           >
             {productions.map((production, index) => (
               <Draggable
                 key={production.id}
-                draggableId={production.id.toString()}
+                draggableId={String(production.id)}
                 index={index}
+                isDragDisabled={production.stage === PRODUCTION_STAGES.SENT || 
+                              production.stage === PRODUCTION_STAGES.CANCELLED}
               >
                 {(provided) => (
                   <div
                     ref={provided.innerRef}
                     {...provided.draggableProps}
                     {...provided.dragHandleProps}
+                    className={`bg-white p-4 rounded-lg shadow-sm ${
+                      production.stage === PRODUCTION_STAGES.SENT || 
+                      production.stage === PRODUCTION_STAGES.CANCELLED ? 
+                      'opacity-50' : ''
+                    }`}
                   >
                     <ProductionCard 
                       production={production}
@@ -206,38 +226,70 @@ const ProductionQueue = () => {
 
   // Helper fonksiyonlar
   const calculateStats = (data) => {
-    const newStats = data.reduce((acc, curr) => ({
-      ...acc,
-      [curr.stage]: (acc[curr.stage] || 0) + 1,
-      total: acc.total + 1
-    }), { total: 0, preparation: 0, inProgress: 0, completed: 0 });
+    const newStats = data.reduce((acc, curr) => {
+      // Start with all possible stages set to 0
+      if (!acc.total) {
+        acc = {
+          total: 0,
+          preparation: 0,
+          producing: 0,
+          produced: 0,
+          sent: 0,
+          cancelled: 0
+        };
+      }
+      
+      // Increment total and specific stage counter
+      acc.total += 1;
+      acc[curr.stage] = (acc[curr.stage] || 0) + 1;
+      
+      return acc;
+    }, {});
+  
     setStats(newStats);
   };
-
+  
   const getProductionsByStage = (stage) => {
     return productions.filter(p => p.stage === stage);
   };
 
   const getStatusClass = (stage) => {
     const classes = {
-      preparation: 'bg-yellow-100 text-yellow-800',
-      inProgress: 'bg-blue-100 text-blue-800',
-      completed: 'bg-green-100 text-green-800'
+      [PRODUCTION_STAGES.PREPARATION]: 'bg-yellow-100 text-yellow-800',
+      [PRODUCTION_STAGES.PRODUCING]: 'bg-blue-100 text-blue-800',
+      [PRODUCTION_STAGES.PRODUCED]: 'bg-green-100 text-green-800',
+      [PRODUCTION_STAGES.SENT]: 'bg-purple-100 text-purple-800',
+      [PRODUCTION_STAGES.CANCELLED]: 'bg-red-100 text-red-800'
     };
     return classes[stage] || '';
   };
-
+  
   const handleDragEnd = async (result) => {
     if (!result.destination) return;
   
     const stages = {
-      preparation: 'preparation',
-      inProgress: 'inProgress',
-      completed: 'completed'
+      [PRODUCTION_STAGES.PREPARATION]: PRODUCTION_STAGES.PREPARATION,
+      [PRODUCTION_STAGES.PRODUCING]: PRODUCTION_STAGES.PRODUCING,
+      [PRODUCTION_STAGES.PRODUCED]: PRODUCTION_STAGES.PRODUCED
     };
   
-    const productionId = result.draggableId;
+    const productionId = parseInt(result.draggableId);
     const newStage = stages[result.destination.droppableId];
+  
+    // Add validation for allowed transitions
+    const currentStage = productions.find(p => p.id === productionId)?.stage;
+    
+    // Only allow specific transitions
+    const allowedTransitions = {
+      [PRODUCTION_STAGES.PREPARATION]: [PRODUCTION_STAGES.PRODUCING],
+      [PRODUCTION_STAGES.PRODUCING]: [PRODUCTION_STAGES.PRODUCED],
+      [PRODUCTION_STAGES.PRODUCED]: [PRODUCTION_STAGES.SENT]
+    };
+  
+    if (!allowedTransitions[currentStage]?.includes(newStage)) {
+      alert('Invalid stage transition');
+      return;
+    }
   
     try {
       await productionAPI.updateStage(productionId, newStage);
@@ -247,7 +299,6 @@ const ProductionQueue = () => {
       alert('Failed to update production stage: ' + error.message);
     }
   };
-
  // ProductionQueue.js içindeki ProductionCard bileşenini güncelleyelim
 
  const ProductionCard = ({ production, onStartProduction, onComplete, onViewDetails }) => {
@@ -265,53 +316,36 @@ const ProductionQueue = () => {
     }
   };
 
-  const handleComplete = async () => {
-    try {
-      setIsLoading(true);
-      await onComplete(production.id);
-    } catch (error) {
-      console.error('Error completing production:', error);
-      alert('Failed to complete production: ' + error.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   return (
-    <div className="bg-white p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+    <div className="bg-white p-4 rounded-lg shadow-sm">
       <div className="flex justify-between items-start mb-3">
-        <h3 className="font-semibold text-lg text-gray-800">{production.productName}</h3>
+        <h3 className="font-semibold text-lg text-gray-800">
+          {production.productName}
+        </h3>
         <span className={`px-2 py-1 rounded-full text-xs ${getStatusClass(production.stage)}`}>
           {production.stage}
         </span>
       </div>
       
       <div className="space-y-2 text-sm text-gray-600">
-        <div className="flex items-center gap-2">
-          <span>Quantity: {production.quantity}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span>Recipe v{production.recipeVersion}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span>{new Date(production.startDate).toLocaleDateString()}</span>
-        </div>
+        <div>Quantity: {production.quantity}</div>
+        <div>Recipe v{production.recipeVersion}</div>
+        <div>{new Date(production.startDate).toLocaleDateString()}</div>
       </div>
 
       <div className="flex justify-between items-center mt-4 pt-3 border-t">
         <button 
           onClick={() => onViewDetails(production.id)}
           className="text-gray-600 hover:text-gray-800 text-sm"
-          disabled={isLoading}
         >
           View Details
         </button>
         
-        {production.stage === 'preparation' && (
+        {production.stage === PRODUCTION_STAGES.PREPARATION && (
           <button
             onClick={handleStart}
             disabled={isLoading}
-            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm transition-colors disabled:opacity-50"
           >
             {isLoading ? (
               <div className="flex items-center">
@@ -326,24 +360,22 @@ const ProductionQueue = () => {
             )}
           </button>
         )}
-        
-        {production.stage === 'inProgress' && (
+
+        {production.stage === PRODUCTION_STAGES.PRODUCING && (
           <button
-            onClick={handleComplete}
-            disabled={isLoading}
-            className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={() => onComplete(production.id)}
+            className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md text-sm"
           >
-            {isLoading ? (
-              <div className="flex items-center">
-                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
-                </svg>
-                Completing...
-              </div>
-            ) : (
-              'Complete'
-            )}
+            Complete
+          </button>
+        )}
+
+        {production.stage === PRODUCTION_STAGES.PRODUCED && (
+          <button
+            onClick={() => productionAPI.updateStage(production.id, PRODUCTION_STAGES.SENT)}
+            className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm"
+          >
+            Mark as Sent
           </button>
         )}
       </div>
@@ -397,7 +429,9 @@ const ProductionQueue = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">Total Productions</p>
-                  <p className="text-2xl font-bold text-blue-700">{stats.total}</p>
+                  <p className="text-2xl font-bold text-blue-700">
+                    {stats.total || 0}
+                  </p>
                 </div>
               </div>
             </div>
@@ -406,7 +440,9 @@ const ProductionQueue = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">In Preparation</p>
-                  <p className="text-2xl font-bold text-yellow-700">{stats.preparation}</p>
+                  <p className="text-2xl font-bold text-yellow-700">
+                    {stats.preparation || 0}
+                  </p>
                 </div>
               </div>
             </div>
@@ -414,8 +450,10 @@ const ProductionQueue = () => {
             <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">In Progress</p>
-                  <p className="text-2xl font-bold text-purple-700">{stats.inProgress}</p>
+                  <p className="text-sm text-gray-600">Producing</p>
+                  <p className="text-2xl font-bold text-purple-700">
+                    {stats.producing || 0}
+                  </p>
                 </div>
               </div>
             </div>
@@ -423,8 +461,10 @@ const ProductionQueue = () => {
             <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Completed</p>
-                  <p className="text-2xl font-bold text-green-700">{stats.completed}</p>
+                  <p className="text-sm text-gray-600">Produced</p>
+                  <p className="text-2xl font-bold text-green-700">
+                    {stats.produced || 0}
+                  </p>
                 </div>
               </div>
             </div>
@@ -435,22 +475,21 @@ const ProductionQueue = () => {
           <div className="grid grid-cols-3 gap-6">
             <DroppableColumn
               title="In Preparation"
-              productions={getProductionsByStage('preparation')}
-              droppableId="preparation"
+              productions={getProductionsByStage(PRODUCTION_STAGES.PREPARATION)}
+              droppableId={PRODUCTION_STAGES.PREPARATION}
             />
             <DroppableColumn
-              title="In Progress"
-              productions={getProductionsByStage('inProgress')}
-              droppableId="inProgress"
+              title="Producing"
+              productions={getProductionsByStage(PRODUCTION_STAGES.PRODUCING)}
+              droppableId={PRODUCTION_STAGES.PRODUCING}
             />
             <DroppableColumn
-              title="Completed"
-              productions={getProductionsByStage('completed')}
-              droppableId="completed"
+              title="Produced"
+              productions={getProductionsByStage(PRODUCTION_STAGES.PRODUCED)}
+              droppableId={PRODUCTION_STAGES.PRODUCED}
             />
           </div>
         </DragDropContext>
-
         {/* Filter Section */}
         <div className="mt-8 mb-6 bg-white p-4 rounded-lg shadow">
         <div className="flex gap-4 items-end">
@@ -483,9 +522,11 @@ const ProductionQueue = () => {
                 className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm p-2"
               >
                 <option value="">All</option>
-                <option value="preparation">In Preparation</option>
-                <option value="inProgress">In Progress</option>
-                <option value="completed">Completed</option>
+                <option value={PRODUCTION_STAGES.PREPARATION}>In Preparation</option>
+                <option value={PRODUCTION_STAGES.PRODUCING}>Producing</option>
+                <option value={PRODUCTION_STAGES.PRODUCED}>Produced</option>
+                <option value={PRODUCTION_STAGES.SENT}>Sent</option>
+                <option value={PRODUCTION_STAGES.CANCELLED}>Cancelled</option>
               </select>
             </div>
             <button
