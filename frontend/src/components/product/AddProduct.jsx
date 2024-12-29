@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { API_URL } from '../../config';
 import axios from 'axios';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -22,12 +23,12 @@ const AddProduct = ({ onClose, materialTypes, onAdd }) => {
   e.preventDefault();
   try {
     // First create the product
-    const response = await axios.post('http://localhost:5001/api/products', formData);
+    const response = await axios.post(`${API_URL}/api/products`, formData);
     if (response.data.success) {
       // If we have recipe data, add it as an active recipe
       if (recipeData.materials.length > 0) {
         await axios.post(
-          `http://localhost:5001/api/products/${response.data.data.id}/recipe`, 
+          `${API_URL}/api/products/${response.data.data.id}/recipe`, 
           {
             ...recipeData,
             isActive: true  // Add this line to make recipe active

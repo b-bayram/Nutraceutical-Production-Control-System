@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_URL } from '../config';
 import Layout from './Layout';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
@@ -12,6 +13,7 @@ import ViewRecipe from '../components/product/ViewRecipe';
 import FilterPanel from '../components/product/FilterPanel';
 
 function Products() {
+  console.log("API URL being used:", API_URL);
   const [products, setProducts] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
@@ -80,7 +82,7 @@ function Products() {
   useEffect(() => {
     const fetchMaterialTypes = async () => {
       try {
-        const response = await axios.get('http://localhost:5001/api/raw-materials/types');
+        const response = await axios.get(`${API_URL}/api/raw-materials/types`);
         if (response.data.success) {
           setMaterialTypes(response.data.data);
         }
@@ -122,7 +124,7 @@ function Products() {
         }))
       };
   
-      const response = await axios.post('http://localhost:5001/api/productions', productionData);
+      const response = await axios.post(`${API_URL}/api/productions`, productionData);
       if (response.data.success) {
         setViewRecipeModalOpen(false);
         // Optionally add a success notification here
@@ -137,14 +139,14 @@ function Products() {
     setError(null);
     try {
       // First get all products
-      const response = await axios.get('http://localhost:5001/api/products');
+      const response = await axios.get(`${API_URL}/api/products`);
       const productsData = response.data.data || [];
   
       // Then get active recipes for each product
       const productsWithRecipes = await Promise.all(
         productsData.map(async (product) => {
           try {
-            const recipeResponse = await axios.get(`http://localhost:5001/api/products/${product.id}/recipe`);
+            const recipeResponse = await axios.get(`${API_URL}/api/products/${product.id}/recipe`);
             return {
               ...product,
               recipeVersion: recipeResponse.data.data?.version,
@@ -173,7 +175,7 @@ function Products() {
 
 const handleExport = async () => {
   try {
-    const response = await axios.get('http://localhost:5001/api/products');
+    const response = await axios.get(`${API_URL}/api/products`);
     const productsData = response.data.data || [];
     
     const exportData = productsData.map(p => ({
@@ -201,7 +203,7 @@ const handleExport = async () => {
   
   const handleEditClick = async (productId) => {
     try {
-      const response = await axios.get(`http://localhost:5001/api/products/${productId}`);
+      const response = await axios.get(`${API_URL}/api/products/${productId}`);
       if (response.data.success) {
         setSelectedProduct(response.data.data);
         // Open your edit modal here
@@ -213,7 +215,7 @@ const handleExport = async () => {
   
   const handleViewRecipe = async (productId) => {
     try {
-      const response = await axios.get(`http://localhost:5001/api/products/${productId}/recipe`);
+      const response = await axios.get(`${API_URL}/api/products/${productId}/recipe`);
       if (response.data.success) {
         setSelectedRecipe(response.data.data);
       }
@@ -234,10 +236,10 @@ const handleExport = async () => {
       setError(null);
       
       // Only use name parameter for search as that's what backend expects
-      let endpoint = 'http://localhost:5001/api/products';
+      let endpoint = `${API_URL}/api/products`;
       
       if (searchFilters.name?.trim()) {
-        endpoint = `http://localhost:5001/api/products/search?name=${encodeURIComponent(searchFilters.name.trim())}`;
+        endpoint = `${API_URL}/api/products/search?name=${encodeURIComponent(searchFilters.name.trim())}`;
       }
   
       if (searchFilters.hasRecipe && searchFilters.hasRecipe !== 'all') {
@@ -449,7 +451,7 @@ const handleExport = async () => {
                         <button 
                           onClick={async () => {
                             try {
-                              const recipeResponse = await axios.get(`http://localhost:5001/api/products/${product.id}/recipe`);
+                              const recipeResponse = await axios.get(`${API_URL}/api/products/${product.id}/recipe`);
                               if (recipeResponse.data.success) {
                                 setSelectedRecipe(recipeResponse.data.data);
                                 setViewRecipeModalOpen(true);

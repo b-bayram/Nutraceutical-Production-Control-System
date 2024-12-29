@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { API_URL } from '../../config';
 import axios from 'axios';
 
 const BulkProductionModal = ({ onClose, onSuccess }) => {
@@ -19,7 +20,7 @@ const BulkProductionModal = ({ onClose, onSuccess }) => {
 
   const fetchProducts = async () => {
     try {
-      const response = await axios.get('http://localhost:5001/api/products');
+      const response = await axios.get(`${API_URL}/api/products`);
       setProducts(response.data.data || []);
     } catch (error) {
       setError('Failed to load products');
@@ -28,7 +29,7 @@ const BulkProductionModal = ({ onClose, onSuccess }) => {
 
   const fetchBatches = async (materialTypeId) => {
     try {
-      const response = await axios.get(`http://localhost:5001/api/raw-materials/batches?typeId=${materialTypeId}`);
+      const response = await axios.get(`${API_URL}/api/raw-materials/batches?typeId=${materialTypeId}`);
       return response.data.data || [];
     } catch (error) {
       console.error('Error fetching batches:', error);
@@ -42,7 +43,7 @@ const BulkProductionModal = ({ onClose, onSuccess }) => {
     try {
       setLoading(true);
       // Fetch recipe and material details
-      const recipeResponse = await axios.get(`http://localhost:5001/api/products/${productId}/recipe`);
+      const recipeResponse = await axios.get(`${API_URL}/api/products/${productId}/recipe`);
       const recipe = recipeResponse.data.data;
       if (!recipe) return;
 
@@ -172,7 +173,7 @@ const BulkProductionModal = ({ onClose, onSuccess }) => {
         return;
       }
 
-      const response = await axios.post('http://localhost:5001/api/productions/bulk', {
+      const response = await axios.post(`${API_URL}/api/productions/bulk`, {
         productions: productionsToSubmit
       });
 

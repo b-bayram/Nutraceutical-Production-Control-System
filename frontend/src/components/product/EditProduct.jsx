@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_URL } from '../../config';
 import axios from 'axios';
 import { Button } from '../ui/button';
 import { Label } from '../ui/label';
@@ -32,7 +33,7 @@ const EditProduct = ({ product, materialTypes, onClose }) => {
 
   const fetchRecipe = async () => {
     try {
-      const response = await axios.get(`http://localhost:5001/api/products/${product.id}/recipe`);
+      const response = await axios.get(`${API_URL}/api/products/${product.id}/recipe`);
       if (response.data.success) {
         const recipe = response.data.data;
         setRecipeData({
@@ -50,7 +51,7 @@ const EditProduct = ({ product, materialTypes, onClose }) => {
 
   const fetchRecipeHistory = async () => {
     try {
-      const response = await axios.get(`http://localhost:5001/api/products/${product.id}/recipe/history`);
+      const response = await axios.get(`${API_URL}/api/products/${product.id}/recipe/history`);
       if (response.data.success) {
         setRecipeHistory(response.data.data);
       }
@@ -68,7 +69,7 @@ const EditProduct = ({ product, materialTypes, onClose }) => {
       setLoading(true);
       setError(null);
       
-      await axios.delete(`http://localhost:5001/api/products/${product.id}/recipe`);
+      await axios.delete(`${API_URL}/api/products/${product.id}/recipe`);
       
       // Reset recipe data
       setRecipeData({
@@ -89,12 +90,12 @@ const EditProduct = ({ product, materialTypes, onClose }) => {
   const handleSetActiveRecipe = async (templateId) => {
     try {
       setLoading(true);
-      const recipeResponse = await axios.get(`http://localhost:5001/api/products/${product.id}/recipe/history`);
+      const recipeResponse = await axios.get(`${API_URL}/api/products/${product.id}/recipe/history`);
       const targetRecipe = recipeResponse.data.data.find(r => r.templateId === templateId);
       
       if (targetRecipe) {
         await axios.put(
-          `http://localhost:5001/api/products/${product.id}/recipe`,
+          `${API_URL}/api/products/${product.id}/recipe`,
           {
             version: targetRecipe.version,
             materials: targetRecipe.materials.map(m => ({
@@ -128,13 +129,13 @@ const EditProduct = ({ product, materialTypes, onClose }) => {
 
     try {
       const productResponse = await axios.put(
-        `http://localhost:5001/api/products/${product.id}`, 
+        `${API_URL}/api/products/${product.id}`, 
         formData
       );
       
       if (recipeData.materials.length > 0) {
         await axios.put(
-          `http://localhost:5001/api/products/${product.id}/recipe`,
+          `${API_URL}/api/products/${product.id}/recipe`,
           {
             ...recipeData,
             isActive: true
@@ -159,7 +160,7 @@ const EditProduct = ({ product, materialTypes, onClose }) => {
 
     setLoading(true);
     try {
-      const response = await axios.delete(`http://localhost:5001/api/products/${product.id}`);
+      const response = await axios.delete(`${API_URL}/api/products/${product.id}`);
       if (response.data.success) {
         onClose();
       }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_URL } from '../config';
 import { Activity, AlertTriangle, Box, Clock, TrendingUp, BarChart2, ChevronLeft, ChevronRight } from 'lucide-react';
 import Layout from './Layout';
 import axios from 'axios';
@@ -39,7 +40,7 @@ function Homepage() {
 
   const fetchRecentActivities = async () => {
     try {
-      const response = await axios.get('http://localhost:5001/api/activities');
+      const response = await axios.get(`${API_URL}/api/activities`);
       setRecentActivities(response.data);
     } catch (error) {
       console.error('Error fetching activities:', error);

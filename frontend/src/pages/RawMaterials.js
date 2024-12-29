@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_URL } from '../config';
 import './RawMaterials.css';
 import LoadingSpinner from '../assets/LoadingSpinner';
 import Layout from './Layout';
@@ -39,7 +40,7 @@ function RawMaterials() {
   const fetchMaterialTypes = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('http://localhost:5001/api/raw-materials/types');
+      const response = await fetch(`${API_URL}/api/raw-materials/types`);
       const data = await response.json();
       if (data.success) {
         setMaterialTypes(data.data);
@@ -55,7 +56,7 @@ function RawMaterials() {
   const fetchBatches = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('http://localhost:5001/api/raw-materials/batches');
+      const response = await fetch(`${API_URL}/api/raw-materials/batches`);
       const data = await response.json();
       if (data.success) {
         setMaterials(data.data || []);
@@ -80,7 +81,7 @@ function RawMaterials() {
 
   const handleEdit = async (id) => {
     try {
-      const response = await fetch(`http://localhost:5001/api/raw-materials/batches/${id}`);
+      const response = await fetch(`${API_URL}/api/raw-materials/batches/${id}`);
       const data = await response.json();
       if (data.success) {
         setSelectedBatch(data.data);
@@ -93,7 +94,7 @@ function RawMaterials() {
 
   const handleUpdateBatch = async (updatedData) => {
     try {
-      const response = await fetch(`http://localhost:5001/api/raw-materials/batches/${selectedBatch.id}`, {
+      const response = await fetch(`${API_URL}/api/raw-materials/batches/${selectedBatch.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -119,7 +120,7 @@ function RawMaterials() {
     if (window.confirm(`Are you sure you want to delete ${selectedBatches.length} selected items?`)) {
         try {
             const payload = { ids: selectedBatches.map(id => parseInt(id)) }; // Convert to integers
-            const response = await fetch('http://localhost:5001/api/raw-materials/batches/bulk-delete', {
+            const response = await fetch(`${API_URL}/api/raw-materials/batches/bulk-delete`, {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json'
@@ -143,7 +144,7 @@ function RawMaterials() {
 
   const handleAddType = async (typeData) => {
     try {
-      const response = await fetch('http://localhost:5001/api/raw-materials/types', {
+      const response = await fetch(`${API_URL}/api/raw-materials/types`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -161,7 +162,7 @@ function RawMaterials() {
   };
   const handleDelete = async (id) => {
     try {
-      const response = await fetch(`http://localhost:5001/api/raw-materials/batches/${id}`, {
+      const response = await fetch(`${API_URL}/api/raw-materials/batches/${id}`, {
         method: 'DELETE',
       });
       const data = await response.json();
@@ -178,7 +179,7 @@ function RawMaterials() {
   };
   const handleAddBatch = async (batchData) => {
     try {
-      const response = await fetch('http://localhost:5001/api/raw-materials/batches', {
+      const response = await fetch(`${API_URL}/api/raw-materials/batches`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_URL } from '../config';
 import Layout from './Layout';
 import axios from 'axios';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
@@ -19,7 +20,7 @@ const PRODUCTION_STAGES = {
 const productionAPI = {
   updateStage: async (productionId, newStage) => {
     try {
-      const response = await axios.put(`http://localhost:5001/api/productions/${productionId}/stage`, {
+      const response = await axios.put(`${API_URL}/api/productions/${productionId}/stage`, {
         stage: newStage
       });
       return response.data;
@@ -147,7 +148,7 @@ const ProductionQueue = () => {
   const fetchProductions = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('http://localhost:5001/api/productions');
+      const response = await axios.get(`${API_URL}/api/productions`);
       const data = response.data.data || [];
       setProductions(data);
       calculateStats(data);
@@ -193,7 +194,7 @@ const ProductionQueue = () => {
 
   const handleViewDetails = async (productionId) => {
     try {
-      const response = await axios.get(`http://localhost:5001/api/productions/${productionId}`);
+      const response = await axios.get(`${API_URL}/api/productions/${productionId}`);
       setSelectedProduction(response.data.data);
       setDetailsModalOpen(true);
     } catch (error) {
@@ -217,7 +218,7 @@ const ProductionQueue = () => {
         if (value) params.append(key, value);
       });
       
-      const response = await axios.get(`http://localhost:5001/api/productions/search?${params}`);
+      const response = await axios.get(`${API_URL}/api/productions/search?${params}`);
       setProductions(response.data.data || []);
     } catch (error) {
       console.error('Error searching productions:', error);
