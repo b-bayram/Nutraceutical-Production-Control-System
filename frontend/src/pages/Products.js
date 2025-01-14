@@ -9,7 +9,7 @@ import axios from 'axios';
 import Modal from './Modal';
 import AddProduct from '../components/product/AddProduct';
 import EditProduct from '../components/product/EditProduct';
-import ViewRecipe from '../components/product/ViewRecipe';
+import RecipeManager from '../components/product/RecipeManager';
 import FilterPanel from '../components/product/FilterPanel';
 
 function Products() {
@@ -33,8 +33,8 @@ function Products() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   //
   const [materialTypes, setMaterialTypes] = useState([]);
-  const [isViewRecipeModalOpen, setViewRecipeModalOpen] = useState(false);
-  const [selectedRecipe, setSelectedRecipe] = useState(null);
+  const [isRecipeManagerOpen, setRecipeManagerOpen] = useState(false);
+  const [selectedProductId, setSelectedProductId] = useState(null);
 
   const getPageNumbers = () => {
     let pages = [];
@@ -112,115 +112,50 @@ function Products() {
     };
     setStats(newStats);
   };
-  
-  const handleStartProduction = async (recipe) => {
-    try {
-      const productionData = {
-        productTemplateId: recipe.templateId,
-        quantity: 1, // You might want to add a quantity input
-        selectedMaterials: recipe.materials.map(material => ({
-          batchId: material.materialTypeId,
-          amountUsed: material.amountInGrams
-        }))
-      };
-  
-      const response = await axios.post(`${API_URL}/api/productions`, productionData);
-      if (response.data.success) {
-        setViewRecipeModalOpen(false);
-        // Optionally add a success notification here
-      }
-    } catch (error) {
-      console.error('Error starting production:', error);
-    }
-  };
 
   const fetchProducts = async () => {
     setIsLoading(true);
     setError(null);
     try {
-      // First get all products
+        const response = await axios.get(`${API_URL}/api/products`);
+        if (response.data.success) {
+            const productsData = response.data.data;
+            setProducts(productsData);
+            calculateStats(productsData);
+        }
+    } catch (error) {
+        console.error('Error fetching products:', error);
+        setError('Failed to load products. Please try again later.');
+    } finally {
+        setIsLoading(false);
+    }
+  };
+
+  const handleExport = async () => {
+    try {
       const response = await axios.get(`${API_URL}/api/products`);
       const productsData = response.data.data || [];
-  
-      // Then get active recipes for each product
-      const productsWithRecipes = await Promise.all(
-        productsData.map(async (product) => {
-          try {
-            const recipeResponse = await axios.get(`${API_URL}/api/products/${product.id}/recipe`);
-            return {
-              ...product,
-              recipeVersion: recipeResponse.data.data?.version,
-              recipeStatus: recipeResponse.data.data?.isActive ? 'Active' : 'Inactive'
-            };
-          } catch (error) {
-            return {
-              ...product,
-              recipeVersion: 'No Recipe',
-              recipeStatus: 'No Recipe'
-            };
-          }
-        })
-      );
-  
-      setProducts(productsWithRecipes);
-      calculateStats(productsWithRecipes);
-    } catch (error) {
-      console.error('Error fetching products:', error);
-      setError('Failed to load products. Please try again later.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-
-const handleExport = async () => {
-  try {
-    const response = await axios.get(`${API_URL}/api/products`);
-    const productsData = response.data.data || [];
-    
-    const exportData = productsData.map(p => ({
-      name: p.name,
-      category: p.category,
-      status: p.status,
-      unitSize: p.unitSize
-    }));
-    
-    const csvContent = "data:text/csv;charset=utf-8," + 
-      Object.keys(exportData[0]).join(",") + "\n" +
-      exportData.map(row => Object.values(row).join(",")).join("\n");
       
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "products.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  } catch (error) {
-    console.error('Error exporting products:', error);
-  }
-};
-  
-  const handleEditClick = async (productId) => {
-    try {
-      const response = await axios.get(`${API_URL}/api/products/${productId}`);
-      if (response.data.success) {
-        setSelectedProduct(response.data.data);
-        // Open your edit modal here
-      }
+      const exportData = productsData.map(p => ({
+        name: p.name,
+        category: p.category,
+        status: p.status,
+        unitSize: p.unitSize
+      }));
+      
+      const csvContent = "data:text/csv;charset=utf-8," + 
+        Object.keys(exportData[0]).join(",") + "\n" +
+        exportData.map(row => Object.values(row).join(",")).join("\n");
+        
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", "products.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     } catch (error) {
-      console.error('Error fetching product details:', error);
-    }
-  };
-  
-  const handleViewRecipe = async (productId) => {
-    try {
-      const response = await axios.get(`${API_URL}/api/products/${productId}/recipe`);
-      if (response.data.success) {
-        setSelectedRecipe(response.data.data);
-      }
-    } catch (error) {
-      console.error('Error fetching recipe:', error);
+      console.error('Error exporting products:', error);
     }
   };
 
@@ -232,326 +167,169 @@ const handleExport = async () => {
 
   const handleSearch = async () => {
     try {
-      setIsLoading(true);
-      setError(null);
-      
-      // Only use name parameter for search as that's what backend expects
-      let endpoint = `${API_URL}/api/products`;
-      
-      if (searchFilters.name?.trim()) {
-        endpoint = `${API_URL}/api/products/search?name=${encodeURIComponent(searchFilters.name.trim())}`;
-      }
-  
-      if (searchFilters.hasRecipe && searchFilters.hasRecipe !== 'all') {
-        endpoint += `${endpoint.includes('?') ? '&' : '?'}hasRecipe=${searchFilters.hasRecipe}`;
-      }
-  
-      const response = await axios.get(endpoint);
-      
-      // Filter results client-side for date range since backend doesn't support it
-      let filteredData = response.data.data;
-      
-      if (searchFilters.createdAfter) {
-        filteredData = filteredData.filter(product => 
-          new Date(product.createdAt) >= new Date(searchFilters.createdAfter)
-        );
-      }
-      
-      if (searchFilters.createdBefore) {
-        filteredData = filteredData.filter(product => 
-          new Date(product.createdAt) <= new Date(searchFilters.createdBefore)
-        );
-      }
-  
-      setProducts(filteredData);
-      calculateStats(filteredData);
-      setCurrentPage(1);
+        setIsLoading(true);
+        setError(null);
+        
+        let response;
+        const searchUrl = searchTerm.trim() 
+            ? `${API_URL}/api/products/search?query=${encodeURIComponent(searchTerm.trim())}`
+            : `${API_URL}/api/products`;
+        
+        response = await axios.get(searchUrl);
+
+        if (response.data.success) {
+            const productsData = response.data.data;
+            setProducts(productsData);
+            calculateStats(productsData);
+        }
     } catch (error) {
-      console.error('Error searching products:', error);
-      setError('Failed to search products. Please try again.');
+        console.error('Error searching products:', error);
+        setError('Failed to search products. Please try again.');
     } finally {
-      setIsLoading(false);
+        setIsLoading(false);
     }
   };
+
+  // Add debounce effect for search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      handleSearch();
+    }, 500); // 500ms delay
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   const handleSearchInputChange = (e) => {
-    const value = e.target.value;
-    setSearchFilters(prev => ({
-      ...prev,
-      name: value
-    }));
-    
-    // Clear existing timeout
-    if (window.searchTimeout) {
-      clearTimeout(window.searchTimeout);
-    }
-    
-    // If search is cleared, show all products
-    if (!value.trim()) {
-      fetchProducts();
-      return;
-    }
-    
-    // Set new timeout for search
-    window.searchTimeout = setTimeout(() => {
-      handleSearch();
-    }, 500); // Wait 500ms after user stops typing before searching
+    setSearchTerm(e.target.value);
   };
 
-  const handleCategoryChange = (event) => {
-    setSelectedCategory(event.target.value);
-    setCurrentPage(1);
+  const handleManageRecipes = (productId) => {
+    setSelectedProductId(productId);
+    setRecipeManagerOpen(true);
   };
-
-  const handlePageChange = (page) => {
-    if (page < 1 || page > totalPages) return;
-    setCurrentPage(page);
-  };
-  
 
   return (
     <Layout>
-      
-        <div className="products-page">
-          <div className="header">
-            <h1>Products</h1>
-            <div className="header-buttons">
-              <button 
-                className="add-btn"
-                onClick={() => {
-                  console.log('Opening add modal');
-                  setAddModalOpen(true);
-                }}
-              >
-                Add New Product
-              </button>
-
-              <button 
-                className="export-btn" 
-                onClick={handleExport}
-              >
-                Export
-              </button>
-            </div>
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold">Products</h1>
+          <div className="flex gap-2">
+            <Button onClick={() => setAddModalOpen(true)}>
+              Add Product
+            </Button>
+            <Button variant="outline" onClick={handleExport}>
+              Export
+            </Button>
           </div>
+        </div>
 
-          <div className="stats-container">
-            <div className="stat-card">
-              <span className="stat-label">Total Products</span>
-              <span className="stat-value total">{stats.total}</span>
-            </div>
-            <div className="stat-card">
-              <span className="stat-label">Active Products</span>
-              <span className="stat-value active">{stats.active}</span>
-            </div>
-            <div className="stat-card">
-              <span className="stat-label">In Production</span>
-              <span className="stat-value production">{stats.inProduction}</span>
-            </div>
-            <div className="stat-card">
-              <span className="stat-label">Out of Stock</span>
-              <span className="stat-value out-of-stock">{stats.outOfStock}</span>
-            </div>
+        <div className="mb-6">
+          <Input
+            type="text"
+            placeholder="Search products..."
+            value={searchTerm}
+            onChange={handleSearchInputChange}
+            className="max-w-md"
+          />
+        </div>
+
+        <div className="stats grid grid-cols-4 gap-4 mb-6">
+          <div className="stat bg-white p-4 rounded-lg shadow">
+            <div className="stat-title text-gray-600">Total Products</div>
+            <div className="stat-value text-3xl font-bold">{stats.total}</div>
           </div>
-
-          <div className="search-section relative mb-6"> {/* Add container with relative positioning */}
-            <div className="search-bar-wrapper flex items-center gap-4 mb-2">
-              <div className="flex-1">
-                <Input 
-                  type="text" 
-                  placeholder="Search products..." 
-                  value={searchFilters.name}
-                  onChange={handleSearchInputChange}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      handleSearch();
-                    }
-                  }}
-                />
-              </div>
-              <Button 
-                onClick={() => setIsFilterPanelOpen(!isFilterPanelOpen)}
-                variant="outline"
-              >
-                {isFilterPanelOpen ? 'Hide Filters' : 'Show Filters'}
-              </Button>
-            </div>
-
-            {error && (
-              <div className="bg-red-50 p-4 rounded-lg text-red-600 mb-4">
-                {error}
-              </div>
-            )}
-
-            {isFilterPanelOpen && (
-              <div className="filter-panel-wrapper bg-white border rounded-lg shadow-lg p-4 mb-4">
-                <FilterPanel
-                  filters={searchFilters}
-                  onChange={setSearchFilters}
-                  onApply={handleSearch}
-                  onReset={handleResetFilters}
-                />
-              </div>
-            )}
+          <div className="stat bg-white p-4 rounded-lg shadow">
+            <div className="stat-title text-gray-600">With Recipe</div>
+            <div className="stat-value text-3xl font-bold">{stats.active}</div>
           </div>
-          
+          <div className="stat bg-white p-4 rounded-lg shadow">
+            <div className="stat-title text-gray-600">In Production</div>
+            <div className="stat-value text-3xl font-bold">{stats.inProduction}</div>
+          </div>
+          <div className="stat bg-white p-4 rounded-lg shadow">
+            <div className="stat-title text-gray-600">Out of Stock</div>
+            <div className="stat-value text-3xl font-bold">{stats.outOfStock}</div>
+          </div>
+        </div>
 
-          <table className="products-table">
+        <div className="overflow-x-auto">
+          <table className="min-w-full bg-white">
             <thead>
               <tr>
-                <th>Product Name</th>
-                <th>Description</th>
-                <th>Recipe Version</th>
-                <th>Recipe Status</th>
-                <th>Created Date</th>
-                <th>Actions</th>
+                <th className="py-2 px-4 border-b">Name</th>
+                <th className="py-2 px-4 border-b">Description</th>
+                <th className="py-2 px-4 border-b">Recipe Status</th>
+                <th className="py-2 px-4 border-b">Actions</th>
               </tr>
             </thead>
             <tbody>
               {currentProducts.map((product) => (
                 <tr key={product.id}>
-                  <td>
-                    <div>
-                      <p className="font-medium">{product.name}</p>
-                    </div>
-                              </td>
-                              <td>{product.description}</td>
-                              <td>
-                    {product.recipeVersion === 'No Recipe' ? (
-                      <span className="text-gray-500">No Recipe</span>
-                    ) : (
-                      <span className="font-medium">v{product.recipeVersion}</span>
-                    )}
+                  <td className="py-2 px-4 border-b">{product.name}</td>
+                  <td className="py-2 px-4 border-b">{product.description}</td>
+                  <td className="py-2 px-4 border-b">
+                    <span className={`px-2 py-1 rounded-full text-sm ${
+                      product.recipe ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                    }`}>
+                      {product.recipe ? `v${product.recipe.version}` : 'No Recipe'}
+                    </span>
                   </td>
-                  <td>
-                    {product.recipeStatus === 'No Recipe' ? (
-                      <span className="px-2 py-1 rounded-full text-sm bg-gray-100 text-gray-800">
-                        No Recipe
-                      </span>
-                    ) : (
-                      <span className={`px-2 py-1 rounded-full text-sm ${
-                        product.recipeStatus === 'Active' 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {product.recipeStatus}
-                      </span>
-                    )}
-                  </td>
-                  <td>{new Date(product.createdAt).toLocaleDateString()}</td>
-                  <td>
+                  <td className="py-2 px-4 border-b">
                     <div className="flex gap-2">
-                      <button 
+                      <Button
+                        variant="outline"
                         onClick={() => handleEdit(product)}
-                        className="text-blue-600 hover:text-blue-800"
                       >
                         Edit
-                      </button>
-                      {product.hasActiveRecipe && (
-                        <button 
-                          onClick={async () => {
-                            try {
-                              const recipeResponse = await axios.get(`${API_URL}/api/products/${product.id}/recipe`);
-                              if (recipeResponse.data.success) {
-                                setSelectedRecipe(recipeResponse.data.data);
-                                setViewRecipeModalOpen(true);
-                              }
-                            } catch (error) {
-                              console.error('Error fetching recipe:', error);
-                            }
-                          }}
-                          className="text-green-600 hover:text-green-800"
-                        >
-                          View Recipe
-                        </button>
-                      )}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => handleManageRecipes(product.id)}
+                      >
+                        Manage Recipes
+                      </Button>
                     </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          {/*loading screen*/}
-          {isLoading ? (
-            <div className="flex justify-center items-center h-64">
-              <div className="border-4 border-blue-500 border-t-transparent rounded-full w-16 h-16 animate-spin"></div>
-            </div>
-          ) : error ? (
-            <div className="bg-red-50 p-4 rounded-lg text-red-600 my-4">
-              {error}
-            </div>
-          ) : (
-            <React.Fragment>
-              {/* ... table content ... */}
-              <div className="pagination">
-                {/* ... pagination controls ... */}
-              </div>
-            </React.Fragment>
-          )}
-
-          <div className="pagination">
-            <span className="showing-text">
-              Showing {products.length === 0 ? 0 : indexOfFirstProduct + 1}-
-              {Math.min(indexOfLastProduct, products.length)} of {products.length} products
-            </span>
-            <div className="page-buttons">
-              <button 
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage === 1}
-                className="page-btn"
-              >
-                Previous
-              </button>
-              {getPageNumbers().map((page, index) => (
-                <React.Fragment key={index}>
-                  {page === '...' ? (
-                    <span className="px-2">...</span>
-                  ) : (
-                    <button
-                      onClick={() => handlePageChange(page)}
-                      className={`page-btn ${currentPage === page ? 'active' : ''}`}
-                    >
-                      {page}
-                    </button>
-                  )}
-                </React.Fragment>
-              ))}
-              <button 
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage >= totalPages}
-                className="page-btn"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-          <Modal isOpen={isEditModalOpen} onClose={() => setEditModalOpen(false)}>
-            <EditProduct 
-              product={selectedProduct}
-              materialTypes={materialTypes}
-              onClose={() => {
-                setEditModalOpen(false);
-                setSelectedProduct(null);
-                fetchProducts(); // This will refresh the products list
-              }}
-            />
-          </Modal>
-          <Modal isOpen={isViewRecipeModalOpen} onClose={() => setViewRecipeModalOpen(false)}>
-            <ViewRecipe 
-              recipe={selectedRecipe}
-              onClose={() => setViewRecipeModalOpen(false)}
-              onStartProduction={handleStartProduction}
-            />
-          </Modal>
-          <Modal isOpen={isAddModalOpen} onClose={() => setAddModalOpen(false)}>
-            <AddProduct 
-              materialTypes={materialTypes}
-              onClose={() => setAddModalOpen(false)}
-              onAdd={handleAddProduct}
-            />
-          </Modal>
         </div>
-      
+
+        {isLoading && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <LoadingSpinner />
+          </div>
+        )}
+
+        {isAddModalOpen && (
+          <Modal isOpen={isAddModalOpen} onClose={() => setAddModalOpen(false)}>
+            <AddProduct
+              onClose={() => setAddModalOpen(false)}
+              onProductAdded={handleAddProduct}
+            />
+          </Modal>
+        )}
+
+        {isEditModalOpen && selectedProduct && (
+          <Modal isOpen={isEditModalOpen} onClose={() => setEditModalOpen(false)}>
+            <EditProduct
+              product={selectedProduct}
+              onClose={() => setEditModalOpen(false)}
+              onProductUpdated={fetchProducts}
+            />
+          </Modal>
+        )}
+
+        {isRecipeManagerOpen && (
+          <Modal isOpen={isRecipeManagerOpen} onClose={() => setRecipeManagerOpen(false)}>
+            <RecipeManager
+              productId={selectedProductId}
+              onClose={() => setRecipeManagerOpen(false)}
+            />
+          </Modal>
+        )}
+      </div>
     </Layout>
   );
 }
