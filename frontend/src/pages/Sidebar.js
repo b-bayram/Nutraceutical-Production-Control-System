@@ -49,21 +49,18 @@ const Sidebar = forwardRef(({ isOpen }, ref) => {
 
   return (
     <div ref={ref} className={`sidebar ${!isOpen ? 'closed' : ''}`}>
-      <div className="px-4 py-6">
-        {/* Logo ve Marka Alanı */}
+      <div className="pt-10 px-4 pb-6">
+        {/* Logo and Brand Area */}
         <div className="mb-8 px-2">
           <div className="flex items-center space-x-3">
-            <div className="bg-white bg-opacity-10 p-2 rounded-xl">
-              <h1 className="text-4xl font-bold text-white">N</h1>
-            </div>
             <div>
-              <h1 className="text-2xl font-bold text-white">NPCS</h1>
+              <h1 className="text-5xl font-bold text-white">NPCS</h1>
               <p className="text-sm text-blue-200">Production Control</p>
             </div>
           </div>
         </div>
 
-        {/* Ana Menü */}
+        {/* Main Menu */}
         <nav className="space-y-2">
           {menuItems.map((item) => {
             const isActive = location.pathname === item.path;
@@ -88,22 +85,22 @@ const Sidebar = forwardRef(({ isOpen }, ref) => {
           })}
         </nav>
 
-        {/* Alt Bölüm - Yardım */}
+        {/* Bottom Section - Help */}
         <div className="mt-8 pt-6 border-t border-white border-opacity-10">
           <div className="space-y-2">
-            <Link
-              to="/help"
-              className="flex items-center px-3 py-3 text-blue-100 rounded-xl hover:bg-white hover:bg-opacity-10 transition-all duration-200"
-            >
-              <span className="inline-flex items-center justify-center mr-3 p-1">
-                <AlertCircle size={20} />
-              </span>
-              <span className="font-medium">Help and Support</span>
-            </Link>
+          <Link
+            to="/help-support"
+            className="flex items-center px-3 py-3 text-blue-100 rounded-xl hover:bg-white hover:bg-opacity-10 transition-all duration-200"
+          >
+            <span className="inline-flex items-center justify-center mr-3 p-1">
+              <AlertCircle size={20} />
+            </span>
+            <span className="font-medium">Help and Support</span>
+          </Link>
           </div>
         </div>
 
-        {/* Kullanıcı Profili */}
+        {/* User Profile */}
         <div className="mt-8">
           <div className="flex items-center p-3 rounded-xl bg-white bg-opacity-10 hover:bg-opacity-15 transition-all duration-200 cursor-pointer">
             <div className="w-10 h-10 rounded-xl bg-blue-500 flex items-center justify-center text-white font-semibold shadow-lg">

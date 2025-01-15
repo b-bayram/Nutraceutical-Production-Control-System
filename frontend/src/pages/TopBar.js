@@ -47,7 +47,7 @@ const TopBar = ({ onMenuClick, menuButtonRef }) => {
             >
               <Menu className="h-6 w-6" />
             </button>
-            <div className="ml-4 font-semibold text-lg text-gray-800">
+            <div className="ml-5 font-semibold text-lg text-gray-800">
               Nutraceutical Production Control System
             </div>
           </div>

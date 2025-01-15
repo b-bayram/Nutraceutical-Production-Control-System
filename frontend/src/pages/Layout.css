@@ -1,64 +1,49 @@
 .layout {
-  display: flex;
-  flex-direction: column;
   min-height: 100vh;
+  position: relative;
+  display: block;
+  background-color: #f8f9fa;
+}
+
+.topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  z-index: 40;
+  background: white;
 }
 
 .sidebar {
   width: 280px;
   background: linear-gradient(180deg, #1a73e8 0%, #1557b0 100%);
   position: fixed;
-  top: 64px;
+  top: 0;
   left: 0;
   bottom: 0;
   transform: translateX(0);
   transition: transform 0.3s ease-in-out;
-  z-index: 40;
+  z-index: 45;
   overflow-y: auto;
   box-shadow: 4px 0 10px rgba(0, 0, 0, 0.1);
 }
+
 
 .sidebar.closed {
   transform: translateX(-100%);
 }
 
 .main-content {
-  margin-top: 64px;
   position: relative;
   padding: 24px;
-  background-color: #f8f9fa;
+  margin-top: 20px;
   min-height: calc(100vh - 64px);
-  transition: margin-left 0.3s ease-in-out;
-  will-change: margin-left;
+  background-color: #f8f9fa;
+  z-index: 30;
 }
 
-/* Define the animation */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Loading animation */
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.animate-spin {
-  animation: spin 1s linear infinite;
-}
-
-@media (max-width: 768px) {
+@media (max-width: 400px) {
   .sidebar {
     transform: translateX(-100%);
   }
@@ -68,7 +53,6 @@
   }
   
   .main-content {
-    margin-left: 0 !important;
     padding: 16px;
   }
 }

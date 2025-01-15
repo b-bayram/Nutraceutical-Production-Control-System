@@ -5,6 +5,7 @@ import Homepage from './pages/Homepage';
 import Products from './pages/Products';
 import RawMaterials from './pages/RawMaterials';
 import ProductionQueue from './pages/ProductionQueue';
+import HelpAndSupport from './pages/HelpAndSupport';
 import Login from './pages/Login';
 
 const PrivateRoute = ({ children }) => {
@@ -46,6 +47,12 @@ function App() {
         <Route path="/production-queue" element={
           <PrivateRoute>
             <ProductionQueue />
+          </PrivateRoute>
+        } />
+
+        <Route path="/help-support" element={
+          <PrivateRoute>
+            <HelpAndSupport />
           </PrivateRoute>
         } />
 
