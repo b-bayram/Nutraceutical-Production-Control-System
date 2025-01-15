@@ -314,38 +314,43 @@ router.delete('/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const pool = await poolPromise;
+        const transaction = await pool.transaction();
 
-        // Önce ürünün reçetesi var mı kontrol et
-        const checkResult = await pool.request()
-            .input('id', sql.Int, id)
-            .query(`
-                SELECT COUNT(*) as recipeCount 
-                FROM ProductTemplates 
-                WHERE productId = @id
-            `);
+        try {
+            await transaction.begin();
 
-        if (checkResult.recordset[0].recipeCount > 0) {
-            return res.status(400).json({
-                success: false,
-                message: 'Reçetesi olan ürün silinemez. Önce reçeteyi silmelisiniz.'
+            // Önce reçeteleri sil
+            await transaction.request()
+                .input('productId', sql.Int, id)
+                .query(`
+                    -- Önce recipe items'ları sil
+                    DELETE ri
+                    FROM RecipeItems ri
+                    JOIN ProductTemplates pt ON ri.productTemplateId = pt.id
+                    WHERE pt.productId = @productId;
+
+                    -- Sonra product templates'i sil
+                    DELETE FROM ProductTemplates
+                    WHERE productId = @productId;
+                `);
+
+            // Sonra ürünü sil
+            await transaction.request()
+                .input('id', sql.Int, id)
+                .query('DELETE FROM Products WHERE id = @id');
+
+            await transaction.commit();
+
+            res.json({
+                success: true,
+                message: 'Ürün ve ilişkili reçeteleri başarıyla silindi'
             });
+        } catch (err) {
+            await transaction.rollback();
+            throw err;
         }
-
-        // Ürünü sil
-        await pool.request()
-            .input('id', sql.Int, id)
-            .query('DELETE FROM Products WHERE id = @id');
-
-        res.json({
-            success: true,
-            message: 'Ürün başarıyla silindi'
-        });
-
     } catch (error) {
-        res.status(500).json({ 
-            success: false, 
-            error: error.message 
-        });
+        res.status(500).json({ error: error.message });
     }
 });
 
@@ -354,13 +359,6 @@ router.post('/:id/recipe', async (req, res) => {
     try {
         const { id } = req.params;
         const { materials } = req.body;
-
-        console.log('Adding recipe for product:', id);
-        console.log('Product ID type:', typeof id);
-        console.log('Recipe materials:', JSON.stringify(materials, null, 2));
-        console.log('Materials array type:', typeof materials);
-        console.log('First material type:', typeof materials[0]?.materialTypeId);
-        console.log('First material amount type:', typeof materials[0]?.amount);
 
         if (!materials || !Array.isArray(materials) || materials.length === 0) {
             return res.status(400).json({
@@ -397,27 +395,30 @@ router.post('/:id/recipe', async (req, res) => {
         }
 
         const pool = await poolPromise;
-
-        // Check if product exists first
-        const productCheck = await pool.request()
-            .input('productId', sql.Int, parseInt(id))
-            .query('SELECT id FROM Products WHERE id = @productId');
-
-        if (productCheck.recordset.length === 0) {
-            return res.status(404).json({
-                success: false,
-                error: 'Product not found'
-            });
-        }
-
-        // Start transaction
         const transaction = await pool.transaction();
-        console.log('Transaction started');
 
         try {
             await transaction.begin();
 
-            // Get current version number
+            // Check if product exists first
+            const productCheck = await transaction.request()
+                .input('productId', sql.Int, parseInt(id))
+                .query('SELECT id FROM Products WHERE id = @productId');
+
+            if (productCheck.recordset.length === 0) {
+                throw new Error('Product not found');
+            }
+
+            // Önce tüm reçeteleri deaktif et
+            await transaction.request()
+                .input('productId', sql.Int, parseInt(id))
+                .query(`
+                    UPDATE ProductTemplates
+                    SET isActive = 0
+                    WHERE productId = @productId
+                `);
+
+            // Get next version number
             const versionResult = await transaction.request()
                 .input('productId', sql.Int, parseInt(id))
                 .query(`
@@ -427,9 +428,8 @@ router.post('/:id/recipe', async (req, res) => {
                 `);
 
             const nextVersion = parseInt(versionResult.recordset[0].nextVersion);
-            console.log('Next version:', nextVersion);
 
-            // Create new template
+            // Create new template (otomatik aktif olarak)
             const templateResult = await transaction.request()
                 .input('productId', sql.Int, parseInt(id))
                 .input('version', sql.Int, nextVersion)
@@ -438,52 +438,20 @@ router.post('/:id/recipe', async (req, res) => {
                     VALUES (
                         CAST(@productId as INT),
                         CAST(@version as INT),
-                        CAST(0 as BIT)
+                        CAST(1 as BIT)  -- Yeni reçete otomatik aktif
                     );
                     SELECT CAST(SCOPE_IDENTITY() as INT) as templateId;
                 `);
 
             const templateId = parseInt(templateResult.recordset[0].templateId);
-            console.log('Created template ID:', templateId);
 
-            // Check if this is the first recipe for the product
-            const existingRecipesResult = await transaction.request()
-                .input('productId', sql.Int, parseInt(id))
-                .query(`
-                    SELECT CAST(COUNT(*) as INT) as recipeCount
-                    FROM ProductTemplates 
-                    WHERE productId = @productId
-                `);
-
-            console.log('Existing recipes count:', existingRecipesResult.recordset[0].recipeCount);
-            const isFirstRecipe = existingRecipesResult.recordset[0].recipeCount === 1;
-            console.log('Is first recipe:', isFirstRecipe);
-
-            // If this is the first recipe, make it active
-            if (isFirstRecipe) {
-                console.log('Activating first recipe...');
-                await transaction.request()
-                    .input('templateId', sql.Int, parseInt(templateId))
-                    .query(`
-                        UPDATE ProductTemplates
-                        SET isActive = CAST(1 as BIT)
-                        WHERE id = @templateId
-                    `);
-            }
-
-            // Add materials one by one
+            // Add materials
             for (const material of materials) {
                 const materialTypeId = parseInt(material.materialTypeId);
                 const amount = parseFloat(material.amount);
 
-                console.log('Adding material:', {
-                    templateId,
-                    materialTypeId,
-                    amount
-                });
-
                 await transaction.request()
-                    .input('templateId', sql.Int, parseInt(templateId))
+                    .input('templateId', sql.Int, templateId)
                     .input('materialTypeId', sql.Int, materialTypeId)
                     .input('amount', sql.Decimal(10,2), amount)
                     .query(`
@@ -497,7 +465,6 @@ router.post('/:id/recipe', async (req, res) => {
             }
 
             await transaction.commit();
-            console.log('Transaction committed successfully');
 
             // Get the complete recipe data
             const recipeData = await pool.request()
@@ -520,7 +487,7 @@ router.post('/:id/recipe', async (req, res) => {
             const recipe = {
                 templateId,
                 version: nextVersion,
-                isActive: false,
+                isActive: true,
                 materials: recipeData.recordset.map(item => ({
                     id: item.recipeItemId,
                     materialType: {
@@ -533,11 +500,11 @@ router.post('/:id/recipe', async (req, res) => {
 
             res.json({
                 success: true,
-                data: recipe
+                data: recipe,
+                message: 'Yeni reçete başarıyla eklendi ve aktif edildi'
             });
 
         } catch (err) {
-            console.error('Transaction error:', err);
             await transaction.rollback();
             throw err;
         }
@@ -560,6 +527,20 @@ router.put('/:id/recipe/:templateId/activate', async (req, res) => {
         try {
             await transaction.begin();
 
+            // Önce reçetenin bu ürüne ait olduğunu kontrol et
+            const templateCheck = await transaction.request()
+                .input('productId', sql.Int, id)
+                .input('templateId', sql.Int, templateId)
+                .query(`
+                    SELECT id 
+                    FROM ProductTemplates 
+                    WHERE id = @templateId AND productId = @productId
+                `);
+
+            if (templateCheck.recordset.length === 0) {
+                throw new Error('Reçete bulunamadı veya bu ürüne ait değil');
+            }
+
             // Deactivate all recipes
             await transaction.request()
                 .input('productId', sql.Int, id)
@@ -580,10 +561,44 @@ router.put('/:id/recipe/:templateId/activate', async (req, res) => {
 
             await transaction.commit();
 
+            // Get activated recipe details
+            const recipeData = await pool.request()
+                .input('templateId', sql.Int, templateId)
+                .query(`
+                    SELECT 
+                        pt.id as templateId,
+                        pt.version,
+                        pt.isActive,
+                        ri.id as recipeItemId,
+                        ri.rawMaterialTypeId as materialTypeId,
+                        rmt.name as materialName,
+                        ri.amountInGrams as amount
+                    FROM ProductTemplates pt
+                    JOIN RecipeItems ri ON pt.id = ri.productTemplateId
+                    JOIN RawMaterialTypes rmt ON ri.rawMaterialTypeId = rmt.id
+                    WHERE pt.id = @templateId
+                `);
+
+            const recipe = {
+                templateId: parseInt(templateId),
+                version: recipeData.recordset[0].version,
+                isActive: true,
+                materials: recipeData.recordset.map(item => ({
+                    id: item.recipeItemId,
+                    materialType: {
+                        id: item.materialTypeId,
+                        name: item.materialName
+                    },
+                    amount: item.amount
+                }))
+            };
+
             res.json({
                 success: true,
-                message: 'Recipe activated successfully'
+                data: recipe,
+                message: 'Reçete başarıyla aktif edildi'
             });
+
         } catch (err) {
             await transaction.rollback();
             throw err;
@@ -790,59 +805,93 @@ router.delete('/:id/recipe', async (req, res) => {
     try {
         const { id } = req.params;
         const pool = await poolPromise;
-
-        // Önce üretimde kullanılıp kullanılmadığını kontrol et
-        const productionCheck = await pool.request()
-            .input('productId', sql.Int, id)
-            .query(`
-                SELECT COUNT(*) as productionCount
-                FROM Productions p
-                JOIN ProductTemplates pt ON p.productTemplateId = pt.id
-                WHERE pt.productId = @productId
-            `);
-
-        if (productionCheck.recordset[0].productionCount > 0) {
-            return res.status(400).json({
-                success: false,
-                message: 'Bu reçete üretimde kullanıldığı için silinemez'
-            });
-        }
-
         const transaction = await pool.transaction();
-        await transaction.begin();
 
         try {
-            // Önce reçete kalemlerini sil
-            await transaction.request()
+            await transaction.begin();
+
+            // Önce aktif reçeteyi bul
+            const activeTemplate = await transaction.request()
                 .input('productId', sql.Int, id)
                 .query(`
-                    DELETE ri
-                    FROM RecipeItems ri
-                    JOIN ProductTemplates pt ON ri.productTemplateId = pt.id
-                    WHERE pt.productId = @productId AND pt.isActive = 1
+                    SELECT id
+                    FROM ProductTemplates
+                    WHERE productId = @productId AND isActive = 1
                 `);
 
-            // Sonra reçeteyi sil
+            if (activeTemplate.recordset.length === 0) {
+                throw new Error('Aktif reçete bulunamadı');
+            }
+
+            const templateId = activeTemplate.recordset[0].id;
+
+            // Sadece aktif (devam eden) üretimlerde kullanılıp kullanılmadığını kontrol et
+            const productionCheck = await transaction.request()
+                .input('templateId', sql.Int, templateId)
+                .query(`
+                    SELECT COUNT(*) as count
+                    FROM Productions
+                    WHERE productTemplateId = @templateId
+                    AND stage NOT IN ('sent', 'cancelled')  -- Tamamlanmış veya iptal edilmiş üretimler hariç
+                `);
+
+            if (productionCheck.recordset[0].count > 0) {
+                throw new Error('Bu reçete devam eden bir üretimde kullanıldığı için silinemiyor. Önce ilgili üretim kayıtlarını tamamlamanız, iptal etmeniz veya silmeniz gerekiyor.');
+            }
+
+            // Tamamlanmış veya iptal edilmiş üretimlerdeki referansları NULL yap
+            await transaction.request()
+                .input('templateId', sql.Int, templateId)
+                .query(`
+                    UPDATE Productions
+                    SET productTemplateId = NULL
+                    WHERE productTemplateId = @templateId
+                    AND stage IN ('sent', 'cancelled');
+                `);
+
+            // Önce recipe items'ları sil
+            await transaction.request()
+                .input('templateId', sql.Int, templateId)
+                .query(`
+                    DELETE FROM RecipeItems
+                    WHERE productTemplateId = @templateId;
+                `);
+
+            // Sonra product template'i sil
+            await transaction.request()
+                .input('templateId', sql.Int, templateId)
+                .query(`
+                    DELETE FROM ProductTemplates
+                    WHERE id = @templateId;
+                `);
+
+            // En son versiyonlu reçeteyi aktif yap
             await transaction.request()
                 .input('productId', sql.Int, id)
                 .query(`
-                    DELETE FROM ProductTemplates
-                    WHERE productId = @productId AND isActive = 1
+                    UPDATE pt
+                    SET pt.isActive = 1
+                    FROM ProductTemplates pt
+                    WHERE pt.productId = @productId
+                    AND pt.version = (
+                        SELECT MAX(version)
+                        FROM ProductTemplates
+                        WHERE productId = @productId
+                    );
                 `);
 
             await transaction.commit();
 
             res.json({
                 success: true,
-                message: 'Reçete başarıyla silindi'
+                message: 'Reçete başarıyla silindi ve en son versiyon aktif edildi'
             });
-
         } catch (err) {
             await transaction.rollback();
             throw err;
         }
-
     } catch (error) {
+        console.error('Delete recipe error:', error);
         res.status(500).json({ error: error.message });
     }
 });

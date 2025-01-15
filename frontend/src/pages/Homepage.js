@@ -7,6 +7,26 @@ import './Homepage.css';
 import CalendarDayModal from '../components/calendar/CalendarDayModal';
 import { useNavigate } from 'react-router-dom';
 
+// API URL'yi tanımla
+const BASE_URL = 'http://localhost:3001';
+
+// Axios instance oluştur
+const api = axios.create({
+  baseURL: BASE_URL,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
+
+// Request interceptor ekle
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 function Homepage() {
   const navigate = useNavigate();
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -26,7 +46,7 @@ function Homepage() {
 
   const fetchProducts = async () => {
     try {
-      const response = await axios.get(`${API_URL}/api/products`);
+      const response = await api.get('/api/products');
       if (response.data.success) {
         // Get the first 3 products from the response
         setProducts(response.data.data.slice(0, 3).map(product => ({
@@ -49,10 +69,10 @@ function Homepage() {
   const fetchRawMaterials = async () => {
     try {
       // First get the raw material types
-      const typesResponse = await axios.get(`${API_URL}/api/raw-materials/types`);
+      const typesResponse = await api.get('/api/raw-materials/types');
       if (typesResponse.data.success) {
         // Then get the batches to calculate total stock for each type
-        const batchesResponse = await axios.get(`${API_URL}/api/raw-materials/batches`);
+        const batchesResponse = await api.get('/api/raw-materials/batches');
         if (batchesResponse.data.success) {
           // Create a map to store total stock for each material type
           const stockMap = {};
@@ -86,7 +106,7 @@ function Homepage() {
 
   const fetchProductions = async () => {
     try {
-      const response = await axios.get(`${API_URL}/api/productions`);
+      const response = await api.get('/api/productions');
       if (response.data.success) {
         // Get the first 3 productions and map them to the required format
         const productionData = response.data.data.slice(0, 3).map(prod => ({

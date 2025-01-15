@@ -296,6 +296,36 @@ function Products() {
           </table>
         </div>
 
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex justify-center gap-2 mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+            >
+              Previous
+            </Button>
+            {getPageNumbers().map((page, index) => (
+              <Button
+                key={index}
+                variant={currentPage === page ? "default" : "outline"}
+                onClick={() => typeof page === 'number' && setCurrentPage(page)}
+                disabled={typeof page !== 'number'}
+              >
+                {page}
+              </Button>
+            ))}
+            <Button
+              variant="outline"
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+            >
+              Next
+            </Button>
+          </div>
+        )}
+
         {isLoading && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <LoadingSpinner />
@@ -315,8 +345,11 @@ function Products() {
           <Modal isOpen={isEditModalOpen} onClose={() => setEditModalOpen(false)}>
             <EditProduct
               product={selectedProduct}
-              onClose={() => setEditModalOpen(false)}
-              onProductUpdated={fetchProducts}
+              materialTypes={materialTypes}
+              onClose={() => {
+                setEditModalOpen(false);
+                fetchProducts();
+              }}
             />
           </Modal>
         )}

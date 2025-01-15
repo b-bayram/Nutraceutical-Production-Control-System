@@ -248,33 +248,34 @@ const EditProduct = ({ product, materialTypes, onClose }) => {
                 </div>
                 <div className="mt-2 border rounded-md divide-y">
                   {recipeHistory.length > 0 ? (
-                    recipeHistory.map((recipe) => (
-                      <div 
-                        key={recipe.templateId} 
-                        className="p-3 flex justify-between items-center hover:bg-gray-50"
-                      >
-                        <div>
-                          <span className="font-medium">Version {recipe.version}</span>
-                          <span className="text-sm text-gray-500 ml-2">
-                            {new Date(recipe.createdAt).toLocaleDateString()}
-                          </span>
-                        </div>
-                        <div className="flex gap-2 items-center">
-                          {recipe.isActive ? (
-                            <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-sm">
-                              Active
-                            </span>
-                          ) : (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleSetActiveRecipe(recipe.templateId)}
-                              disabled={loading}
-                            >
-                              Set Active
-                            </Button>
-                          )}
+                    recipeHistory.map((recipe, index) => (
+                      <div key={index} className="p-4 hover:bg-gray-50">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h4 className="font-medium">Version {recipe.version}</h4>
+                            <p className="text-sm text-gray-600">
+                              Created: {new Date(recipe.createdAt).toLocaleString()}
+                            </p>
+                            <div className="mt-2">
+                              <h5 className="text-sm font-medium">Materials:</h5>
+                              <ul className="list-disc list-inside text-sm text-gray-600">
+                                {recipe.materials?.map((material, idx) => (
+                                  <li key={idx}>
+                                    {materialTypes?.find(mt => mt.id === material.materialTypeId)?.name || 'Unknown'} - {material.amountInGrams}g
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleSetActiveRecipe(recipe.templateId)}
+                            disabled={loading}
+                          >
+                            Set as Active
+                          </Button>
                         </div>
                       </div>
                     ))
@@ -286,75 +287,63 @@ const EditProduct = ({ product, materialTypes, onClose }) => {
                 </div>
               </div>
 
-              {/* New Recipe Section */}
-              <div className="pt-6 border-t">
-                <div className="flex justify-between items-center mb-4">
-                  <Label>New Recipe Version</Label>
-                </div>
-
-                <div className="space-y-4">
-                  <Input
-                    value={recipeData.version}
-                    onChange={(e) => setRecipeData({ ...recipeData, version: e.target.value })}
-                    placeholder="e.g., 1.0"
-                  />
-
-                  <div className="space-y-3">
-                    <Label>Materials</Label>
-                    {recipeData.materials.map((material, index) => (
-                      <div key={index} className="flex gap-2 items-center">
+              {/* Current Recipe Section */}
+              <div>
+                <Label>Current Recipe</Label>
+                <div className="mt-2 space-y-4">
+                  {recipeData.materials.map((material, index) => (
+                    <div key={index} className="flex gap-4">
+                      <div className="flex-1">
+                        <Label>Material Type</Label>
                         <select
-                          className="flex-1 p-2 border rounded-md"
                           value={material.materialTypeId}
                           onChange={(e) => {
                             const newMaterials = [...recipeData.materials];
-                            newMaterials[index].materialTypeId = e.target.value;
+                            newMaterials[index].materialTypeId = parseInt(e.target.value);
                             setRecipeData({ ...recipeData, materials: newMaterials });
                           }}
+                          className="w-full mt-1 p-2 border rounded-md"
+                          required
                         >
-                          <option value="">Select Material</option>
-                          {materialTypes.map((type) => (
+                          <option value="">Select Material Type</option>
+                          {materialTypes?.map(type => (
                             <option key={type.id} value={type.id}>
                               {type.name}
                             </option>
                           ))}
                         </select>
-
+                      </div>
+                      <div className="flex-1">
+                        <Label>Amount (grams)</Label>
                         <Input
                           type="number"
-                          placeholder="Amount (g)"
-                          className="w-32"
                           value={material.amountInGrams}
                           onChange={(e) => {
                             const newMaterials = [...recipeData.materials];
-                            newMaterials[index].amountInGrams = e.target.value;
+                            newMaterials[index].amountInGrams = parseFloat(e.target.value);
                             setRecipeData({ ...recipeData, materials: newMaterials });
                           }}
+                          className="w-full mt-1"
+                          required
                         />
-
+                      </div>
+                      <div className="flex items-end">
                         <Button
                           type="button"
+                          variant="destructive"
                           onClick={() => {
                             const newMaterials = recipeData.materials.filter((_, i) => i !== index);
                             setRecipeData({ ...recipeData, materials: newMaterials });
                           }}
-                          variant="destructive"
                         >
                           Remove
                         </Button>
                       </div>
-                    ))}
-
-                    <Button 
-                      type="button" 
-                      onClick={addMaterial}
-                      variant="secondary"
-                      className="w-full"
-                      disabled={loading}
-                    >
-                      Add Material
-                    </Button>
-                  </div>
+                    </div>
+                  ))}
+                  <Button type="button" onClick={addMaterial}>
+                    Add Material
+                  </Button>
                 </div>
               </div>
             </div>

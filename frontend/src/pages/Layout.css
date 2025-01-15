@@ -4,35 +4,32 @@
   min-height: 100vh;
 }
 
-
 .sidebar {
   width: 280px;
   background: linear-gradient(180deg, #1a73e8 0%, #1557b0 100%);
   position: fixed;
-  top: 0;  /* This ensures it covers the top bar */
+  top: 64px;
   left: 0;
   bottom: 0;
-  transition: all 0.3s ease-in-out;
-  z-index: 900;
+  transform: translateX(0);
+  transition: transform 0.3s ease-in-out;
+  z-index: 40;
   overflow-y: auto;
   box-shadow: 4px 0 10px rgba(0, 0, 0, 0.1);
 }
+
 .sidebar.closed {
   transform: translateX(-100%);
 }
 
 .main-content {
-  position: absolute;
-  top: 64px;
-  right: 0;
-  bottom: 0;
-  left: 0;
+  margin-top: 64px;
+  position: relative;
   padding: 24px;
   background-color: #f8f9fa;
   min-height: calc(100vh - 64px);
-  transition: all 0.3s ease-in-out;
-  /* Add animation */
-  animation: fadeInUp 0.3s ease-out;
+  transition: margin-left 0.3s ease-in-out;
+  will-change: margin-left;
 }
 
 /* Define the animation */
@@ -47,6 +44,20 @@
   }
 }
 
+/* Loading animation */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
 @media (max-width: 768px) {
   .sidebar {
     transform: translateX(-100%);
@@ -57,7 +68,7 @@
   }
   
   .main-content {
-    margin-left: 0;
+    margin-left: 0 !important;
     padding: 16px;
   }
 }

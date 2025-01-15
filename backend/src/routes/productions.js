@@ -210,15 +210,23 @@ router.post('/', async (req, res) => {
                         'preparation'
                     );
                     SELECT SCOPE_IDENTITY() AS id;
+
+                    -- Ürün adını al
+                    SELECT p.name as productName
+                    FROM Products p
+                    JOIN ProductTemplates pt ON p.id = pt.productId
+                    WHERE pt.id = @productTemplateId;
                 `);
 
             const productionId = productionResult.recordset[0].id;
+            const productName = productionResult.recordset[1][0].productName;
 
+            // Hammaddeleri ekle
             for (const material of selectedMaterials) {
                 await transaction.request()
                     .input('productionId', sql.Int, productionId)
                     .input('batchId', sql.Int, material.batchId)
-                    .input('amountUsed', sql.Decimal(18, 2), material.amountUsed)
+                    .input('amountUsed', sql.Decimal(18,2), material.amountUsed)
                     .query(`
                         INSERT INTO ProductionMaterials (
                             productionId,
@@ -233,12 +241,28 @@ router.post('/', async (req, res) => {
                     `);
             }
 
+            // Bildirim oluştur
+            await transaction.request()
+                .input('title', sql.NVarChar(255), 'Yeni Üretim Başlatıldı')
+                .input('message', sql.NVarChar(sql.MAX), `${productName} ürünü için ${quantity} adetlik yeni üretim başlatıldı.`)
+                .input('type', sql.VarChar(50), 'production')
+                .input('relatedItemId', sql.Int, productionId)
+                .query(`
+                    INSERT INTO Notifications (
+                        type, title, message, relatedItemId, priority
+                    )
+                    VALUES (
+                        @type, @title, @message, @relatedItemId, 'normal'
+                    )
+                `);
+
             await transaction.commit();
 
             res.status(201).json({
                 success: true,
                 data: {
                     productionId,
+                    productTemplateId,
                     quantity,
                     selectedMaterials
                 }
@@ -362,77 +386,132 @@ router.put('/:id/stage', async (req, res) => {
         const { id } = req.params;
         const { stage } = req.body;
         const pool = await poolPromise;
+        const transaction = await pool.transaction();
 
-        // Geçerli stage'leri veritabanındaki constraint'e göre tanımla 
-        const validStages = ['cancelled', 'sent', 'produced', 'producing', 'preparation'];
-        
-        // Stage validasyonu
-        if (!validStages.includes(stage)) {
-            return res.status(400).json({
-                success: false,
-                message: 'Geçersiz üretim aşaması. Geçerli aşamalar: ' + validStages.join(', ')
-            });
-        }
+        try {
+            await transaction.begin();
 
-        // Mevcut stage'i kontrol et
-        const currentStageResult = await pool.request()
-            .input('id', sql.Int, id)
-            .query(`
-                SELECT stage 
-                FROM Productions 
-                WHERE id = @id
-            `);
-
-        if (currentStageResult.recordset.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: 'Üretim bulunamadı'
-            });
-        }
-
-        const currentStage = currentStageResult.recordset[0].stage;
-
-        // Stage geçiş kontrolü
-        if (currentStage === 'produced' && stage !== 'sent') {
-            return res.status(400).json({
-                success: false,
-                message: 'Üretilmiş durumdan sadece gönderildi durumuna geçilebilir'
-            });
-        }
-
-        if (currentStage === 'cancelled') {
-            return res.status(400).json({
-                success: false,
-                message: 'İptal edilmiş üretimin aşaması değiştirilemez'
-            });
-        }
-
-        if (currentStage === 'sent') {
-            return res.status(400).json({
-                success: false,
-                message: 'Gönderilmiş üretimin aşaması değiştirilemez'
-            });
-        }
-
-        // Stage güncelleme
-        const stageResult = await pool.request()
-            .input('id', sql.Int, id)
-            .input('stage', sql.NVarChar, stage)
-            .query(`
-                UPDATE Productions 
-                SET stage = @stage 
-                WHERE id = @id
-            `);
-
-        res.json({
-            success: true,
-            message: 'Üretim aşaması başarıyla güncellendi',
-            data: {
-                id,
-                previousStage: currentStage,
-                currentStage: stage
+            // Geçerli stage'leri veritabanındaki constraint'e göre tanımla 
+            const validStages = ['cancelled', 'sent', 'produced', 'producing', 'preparation'];
+            
+            // Stage validasyonu
+            if (!validStages.includes(stage)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Geçersiz üretim aşaması. Geçerli aşamalar: ' + validStages.join(', ')
+                });
             }
-        });
+
+            // Mevcut stage'i ve ürün bilgilerini kontrol et
+            const currentStageResult = await transaction.request()
+                .input('id', sql.Int, id)
+                .query(`
+                    SELECT 
+                        p.stage,
+                        pr.name as productName,
+                        p.quantity
+                    FROM Productions p
+                    JOIN ProductTemplates pt ON p.productTemplateId = pt.id
+                    JOIN Products pr ON pt.productId = pr.id
+                    WHERE p.id = @id
+                `);
+
+            if (currentStageResult.recordset.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Üretim bulunamadı'
+                });
+            }
+
+            const currentStage = currentStageResult.recordset[0].stage;
+            const productName = currentStageResult.recordset[0].productName;
+            const quantity = currentStageResult.recordset[0].quantity;
+
+            // Stage geçiş kontrolü
+            if (currentStage === 'produced' && stage !== 'sent') {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Üretilmiş durumdan sadece gönderildi durumuna geçilebilir'
+                });
+            }
+
+            if (currentStage === 'cancelled') {
+                return res.status(400).json({
+                    success: false,
+                    message: 'İptal edilmiş üretimin aşaması değiştirilemez'
+                });
+            }
+
+            if (currentStage === 'sent') {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Gönderilmiş üretimin aşaması değiştirilemez'
+                });
+            }
+
+            // Stage güncelleme
+            await transaction.request()
+                .input('id', sql.Int, id)
+                .input('stage', sql.NVarChar, stage)
+                .query(`
+                    UPDATE Productions 
+                    SET stage = @stage 
+                    WHERE id = @id
+                `);
+
+            // Bildirim mesajını hazırla
+            let notificationTitle = 'Üretim Durumu Güncellendi';
+            let notificationMessage = '';
+
+            switch(stage) {
+                case 'producing':
+                    notificationMessage = `${productName} ürününün ${quantity} adetlik üretimi başladı.`;
+                    break;
+                case 'produced':
+                    notificationMessage = `${productName} ürününün ${quantity} adetlik üretimi tamamlandı.`;
+                    break;
+                case 'sent':
+                    notificationMessage = `${productName} ürününün ${quantity} adetlik üretimi gönderildi.`;
+                    break;
+                case 'cancelled':
+                    notificationMessage = `${productName} ürününün ${quantity} adetlik üretimi iptal edildi.`;
+                    break;
+                default:
+                    notificationMessage = `${productName} ürününün ${quantity} adetlik üretimi ${stage} aşamasına güncellendi.`;
+            }
+
+            // Bildirim oluştur
+            await transaction.request()
+                .input('title', sql.NVarChar(255), notificationTitle)
+                .input('message', sql.NVarChar(sql.MAX), notificationMessage)
+                .input('type', sql.VarChar(50), 'production')
+                .input('relatedItemId', sql.Int, id)
+                .input('priority', sql.VarChar(20), stage === 'cancelled' ? 'high' : 'normal')
+                .query(`
+                    INSERT INTO Notifications (
+                        type, title, message, relatedItemId, priority
+                    )
+                    VALUES (
+                        @type, @title, @message, @relatedItemId, @priority
+                    )
+                `);
+
+            await transaction.commit();
+
+            res.json({
+                success: true,
+                message: 'Üretim aşaması başarıyla güncellendi',
+                data: {
+                    id,
+                    previousStage: currentStage,
+                    currentStage: stage
+                }
+            });
+
+        } catch (err) {
+            await transaction.rollback();
+            throw err;
+        }
 
     } catch (error) {
         res.status(500).json({ error: error.message });

@@ -83,19 +83,12 @@ const RecipeManager = ({ productId, onClose }) => {
             setIsLoading(true);
             setError(null);
 
-            console.log('Submitting recipe:', {
-                productId,
-                materials: newRecipe.materials
-            });
-
             const response = await axios.post(`${API_URL}/api/products/${productId}/recipe`, {
                 materials: newRecipe.materials.map(m => ({
                     materialTypeId: parseInt(m.materialTypeId),
                     amount: parseFloat(m.amount)
                 }))
             });
-
-            console.log('Recipe submission response:', response.data);
 
             if (response.data.success) {
                 await fetchRecipes();
@@ -122,6 +115,21 @@ const RecipeManager = ({ productId, onClose }) => {
         } catch (error) {
             setError('Failed to activate recipe');
             console.error('Error activating recipe:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleDeleteRecipe = async () => {
+        try {
+            setIsLoading(true);
+            const response = await axios.delete(`${API_URL}/api/products/${productId}/recipe`);
+            if (response.data.success) {
+                await fetchRecipes();
+            }
+        } catch (error) {
+            setError(error.response?.data?.error || 'Failed to delete recipe');
+            console.error('Error deleting recipe:', error);
         } finally {
             setIsLoading(false);
         }
@@ -196,13 +204,23 @@ const RecipeManager = ({ productId, onClose }) => {
                                     {recipe.isActive ? 'Active' : 'Inactive'}
                                 </span>
                             </div>
-                            {!recipe.isActive && (
-                                <Button
-                                    onClick={() => handleActivateRecipe(recipe.templateId)}
-                                >
-                                    Set Active
-                                </Button>
-                            )}
+                            <div className="flex gap-2">
+                                {!recipe.isActive && (
+                                    <Button
+                                        onClick={() => handleActivateRecipe(recipe.templateId)}
+                                    >
+                                        Set Active
+                                    </Button>
+                                )}
+                                {recipe.isActive && (
+                                    <Button 
+                                        variant="destructive"
+                                        onClick={handleDeleteRecipe}
+                                    >
+                                        Delete Recipe
+                                    </Button>
+                                )}
+                            </div>
                         </div>
                         <div className="space-y-2">
                             {recipe.materials.map((material, index) => (
